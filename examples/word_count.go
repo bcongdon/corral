@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -11,8 +11,10 @@ import (
 type wordCount struct{}
 
 func (w wordCount) Map(key, value string, emitter corral.Emitter) {
-	fmt.Println("Inside mapper")
-	for _, word := range strings.Fields(value) {
+	re := regexp.MustCompile("[^a-zA-Z0-9\\s]+")
+
+	sanitized := strings.ToLower(re.ReplaceAllString(value, ""))
+	for _, word := range strings.Fields(sanitized) {
 		emitter.Emit(word, strconv.Itoa(1))
 	}
 }
@@ -26,12 +28,7 @@ func (w wordCount) Reduce(key string, values corral.ValueIterator, emitter corra
 }
 
 func main() {
-	wc := wordCount{}
-
-	job := corral.Job{
-		Map:    wc,
-		Reduce: wc,
-	}
+	job := corral.NewJob(wordCount{}, wordCount{})
 
 	job.Main()
 }

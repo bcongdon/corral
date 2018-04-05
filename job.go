@@ -2,31 +2,45 @@ package corral
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 
 	"github.com/bcongdon/corral/backend"
+	log "github.com/sirupsen/logrus"
 )
 
 type Job struct {
-	Input      string
-	Map        Mapper
-	Reduce     Reducer
-	fileSystem backend.FileSystem
+	Input  string
+	Map    Mapper
+	Reduce Reducer
+
+	fileSystem       backend.FileSystem
+	intermediateBins uint
 }
 
-type emitter struct {
-	writer io.Writer
+func (j *Job) runMapper(mapperID uint, splits []inputSplit, mapper Mapper) error {
+	emitter := newMapperEmitter(j.intermediateBins, mapperID, &j.fileSystem)
+
+	for _, split := range splits {
+		err := j.processMapperSplit(split, mapper, &emitter)
+		if err != nil {
+			return err
+		}
+	}
+
+	emitter.close()
+
+	return nil
 }
 
-func (e emitter) Emit(key, value string) {
-	fmt.Println(key, value)
-	e.writer.Write([]byte(fmt.Sprintf("%s\t%s\n", key, value)))
-}
-
-func (j *Job) runMapper(splitID int, split InputSplit, mapper Mapper) error {
-	inputSource := j.fileSystem.OpenReader(split.filename)
-	emitWriter := j.fileSystem.OpenEmitter(fmt.Sprintf("%s-map-%d", split.filename, splitID))
+func (j *Job) processMapperSplit(split inputSplit, mapper Mapper, emitter Emitter) error {
+	inputSource, err := j.fileSystem.OpenReader(split.filename)
+	if err != nil {
+		return err
+	}
 
 	if split.startOffset > 0 {
 		_, err := inputSource.Seek(split.startOffset, io.SeekStart)
@@ -34,8 +48,6 @@ func (j *Job) runMapper(splitID int, split InputSplit, mapper Mapper) error {
 			return err
 		}
 	}
-
-	emitter := emitter{writer: emitWriter}
 
 	scanner := bufio.NewScanner(inputSource)
 	for scanner.Scan() {
@@ -43,55 +55,103 @@ func (j *Job) runMapper(splitID int, split InputSplit, mapper Mapper) error {
 		mapper.Map("", record, emitter)
 	}
 
-	emitWriter.Close()
-
 	return nil
 }
 
-func (j *Job) runReducer(splitID int, split InputSplit, reducer Reducer) error {
-	inputSource := j.fileSystem.OpenReader(split.filename)
-	emitWriter := j.fileSystem.OpenEmitter(fmt.Sprintf("%s-map-%d", split.filename, splitID))
+func (j *Job) runReducer(binID uint, reducer Reducer) error {
+	// Determine the intermediate data files this reducer is responsible for
+	intermediateFiles := make([]backend.FileInfo, 0)
 
-	if split.startOffset > 0 {
-		_, err := inputSource.Seek(split.startOffset, io.SeekStart)
-		if err != nil {
-			return err
+	files, err := j.fileSystem.ListFiles()
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if strings.Contains(file.Name, fmt.Sprintf("map-bin%d", binID)) {
+			intermediateFiles = append(intermediateFiles, file)
 		}
 	}
 
-	emitter := emitter{writer: emitWriter}
-
-	scanner := bufio.NewScanner(inputSource)
-	for scanner.Scan() {
-		record := scanner.Text()
+	// Open emitter for output data
+	emitWriter, err := j.fileSystem.OpenWriter(fmt.Sprintf("output-part-%d", binID))
+	if err != nil {
+		return err
 	}
 
-	mapper.Reduce()
+	emitter := newReducerEmitter(emitWriter)
 
-	emitWriter.Close()
+	keyChannels := make(map[string](chan string))
+	var waitGroup sync.WaitGroup
+
+	for _, file := range intermediateFiles {
+		reader, err := j.fileSystem.OpenReader(file.Name)
+		if err != nil {
+			return err
+		}
+		log.Infof("Reducing on intermediate file: %s", file.Name)
+
+		// Feed intermediate data into reducers
+		decoder := json.NewDecoder(reader)
+		for decoder.More() {
+			var kv keyValue
+			if err := decoder.Decode(&kv); err != nil {
+				return err
+			}
+
+			// Create a reducer for the current key if necessary
+			keyChan, exists := keyChannels[kv.Key]
+			if !exists {
+				keyChan = make(chan string)
+				keyIter := newValueIterator(keyChan)
+				keyChannels[kv.Key] = keyChan
+
+				waitGroup.Add(1)
+				go func() {
+					defer waitGroup.Done()
+					reducer.Reduce(kv.Key, keyIter, emitter)
+				}()
+			}
+
+			// Pass current value to the appropriate key channel
+			keyChan <- kv.Value
+		}
+	}
+
+	// Close key channels to signal that all intermediate data has been read
+	for _, keyChan := range keyChannels {
+		close(keyChan)
+	}
+	waitGroup.Wait()
 
 	return nil
 }
 
-func (j *Job) calculateInputSplits() []InputSplit {
-	return []InputSplit{
-		InputSplit{j.Input, 0, 0},
+func (j *Job) calculateinputSplits() []inputSplit {
+	return []inputSplit{
+		inputSplit{j.Input, 0, 0},
+	}
+}
+
+func NewJob(mapper Mapper, reducer Reducer) *Job {
+	return &Job{
+		Map:              mapper,
+		Reduce:           reducer,
+		intermediateBins: 10,
 	}
 }
 
 func (j *Job) Main() {
 	fs := new(backend.LocalBackend)
-	fs.Init("./tmp")
-	j.Input = "word_count.go"
+	fs.Init(".")
+	j.Input = "metamorphosis.txt"
 	j.fileSystem = fs
 
-	for splitID, inputSplit := range j.calculateInputSplits() {
-		fmt.Println(inputSplit)
-		j.runMapper(splitID, inputSplit, j.Map)
+	for splitID, split := range j.calculateinputSplits() {
+		fmt.Println(split)
+		j.runMapper(uint(splitID), []inputSplit{split}, j.Map)
 	}
 
-	for splitID := range j.calculateInputSplits() {
-		inputSplit := InputSplit{fmt.Sprintf("%s-map-%d", j.Input, splitID), 0, 0}
-		j.runReducer(splitID, inputSplit, j.Reduce)
+	for splitID := uint(0); splitID < j.intermediateBins; splitID++ {
+		j.runReducer(splitID, j.Reduce)
 	}
 }

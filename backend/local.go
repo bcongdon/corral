@@ -4,31 +4,38 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LocalBackend struct {
 	basePath string
 }
 
-func (l *LocalBackend) ListFiles() []string {
-	files := make([]string, 0)
+func (l *LocalBackend) ListFiles() ([]FileInfo, error) {
+	files := make([]FileInfo, 0)
 
-	filepath.Walk(l.basePath, func(path string, f os.FileInfo, err error) error {
-		files = append(files, path)
-		return nil
+	err := filepath.Walk(l.basePath, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		files = append(files, FileInfo{
+			Name: f.Name(),
+			Size: f.Size(),
+		})
+		return err
 	})
 
-	return files
+	return files, err
 }
 
-func (l *LocalBackend) OpenReader(path string) io.ReadSeeker {
-	file, _ := os.OpenFile(path, os.O_RDONLY, 0777)
-	return file
+func (l *LocalBackend) OpenReader(path string) (io.ReadSeeker, error) {
+	return os.OpenFile(path, os.O_RDONLY, 0600)
 }
 
-func (l *LocalBackend) OpenEmitter(path string) io.WriteCloser {
-	file, _ := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0777)
-	return file
+func (l *LocalBackend) OpenWriter(path string) (io.WriteCloser, error) {
+	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 
 func (l *LocalBackend) Init(basePath string) {
