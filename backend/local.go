@@ -38,6 +38,17 @@ func (l *LocalBackend) OpenWriter(path string) (io.WriteCloser, error) {
 	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 
+func (l *LocalBackend) Stat(path string) (FileInfo, error) {
+	fInfo, err := os.Stat(path)
+	if err != nil {
+		return FileInfo{}, err
+	}
+	return FileInfo{
+		Name: fInfo.Name(),
+		Size: fInfo.Size(),
+	}, nil
+}
+
 func (l *LocalBackend) Init(basePath string) {
 	l.basePath = basePath
 }

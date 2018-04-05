@@ -3,6 +3,7 @@ package corral
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"strings"
@@ -13,9 +14,10 @@ import (
 )
 
 type Job struct {
-	Input  string
-	Map    Mapper
-	Reduce Reducer
+	Inputs       []string
+	Map          Mapper
+	Reduce       Reducer
+	MaxSplitSize int64
 
 	fileSystem       backend.FileSystem
 	intermediateBins uint
@@ -133,10 +135,18 @@ func (j *Job) runReducer(binID uint, reducer Reducer) error {
 	return nil
 }
 
-func (j *Job) calculateinputSplits() []inputSplit {
-	return []inputSplit{
-		inputSplit{j.Input, 0, 0},
+func (j *Job) inputSplits() []inputSplit {
+	splits := make([]inputSplit, 0)
+	for _, inputFileName := range j.Inputs {
+		fInfo, err := j.fileSystem.Stat(inputFileName)
+		if err != nil {
+			log.Warn("Unable to load input file: %s (%s)", inputFileName, err)
+			continue
+		}
+
+		splits = append(splits, calculateInputSplits(fInfo, j.MaxSplitSize)...)
 	}
+	return splits
 }
 
 func NewJob(mapper Mapper, reducer Reducer) *Job {
@@ -144,17 +154,23 @@ func NewJob(mapper Mapper, reducer Reducer) *Job {
 		Map:              mapper,
 		Reduce:           reducer,
 		intermediateBins: 10,
+
+		// Default MaxSplitSize is 10MB
+		// MaxSplitSize: 10 * 1000000,
+		MaxSplitSize: 1000,
 	}
 }
 
 func (j *Job) Main() {
+	flag.Parse()
+	j.Inputs = flag.Args()
+
 	fs := new(backend.LocalBackend)
 	fs.Init(".")
-	j.Input = "metamorphosis.txt"
 	j.fileSystem = fs
 
 	var wg sync.WaitGroup
-	for splitID, split := range j.calculateinputSplits() {
+	for splitID, split := range j.inputSplits() {
 		wg.Add(1)
 		go func(sID uint, s inputSplit) {
 			defer wg.Done()

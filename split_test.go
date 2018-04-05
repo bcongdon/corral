@@ -45,32 +45,29 @@ func TestPackInputSplits(t *testing.T) {
 }
 
 var calculateSplitTests = []struct {
-	fileSizes      []int64
-	maxSplitSize   int64
-	expectedSplits int
+	fileSize            int64
+	maxSplitSize        int64
+	expectedSplitStarts []int64
+	expectedSplitEnds   []int64
 }{
-	{[]int64{}, 0, 0},
-	{[]int64{3, 10, 5}, 3, 1 + 4 + 2},
-	{[]int64{3, 3, 1, 2, 3}, 3, 1 + 1 + 1 + 1 + 1},
+	{3, 3, []int64{0}, []int64{2}},
+	{10, 3, []int64{0, 3, 6, 9}, []int64{2, 5, 8, 9}},
+	{5, 10, []int64{0}, []int64{4}},
 }
 
 func TestCalculateInputSplits(t *testing.T) {
 	for _, test := range calculateSplitTests {
-		files := make([]backend.FileInfo, len(test.fileSizes))
-		for i, fileSize := range test.fileSizes {
-			files[i] = backend.FileInfo{
-				Name: fmt.Sprint(i),
-				Size: fileSize,
-			}
+		fInfo := backend.FileInfo{
+			Size: test.fileSize,
 		}
 
-		splits := calculateInputSplits(files, test.maxSplitSize)
-		fileCoverage := make(map[string]int64)
-		for _, split := range splits {
-			fileCoverage[split.filename] += split.Size()
-		}
+		splits := calculateInputSplits(fInfo, test.maxSplitSize)
 
-		assert.Equal(t, test.expectedSplits, len(splits), fmt.Sprintln(splits))
+		assert.Equal(t, len(test.expectedSplitStarts), len(splits), fmt.Sprintln(splits))
+		for i, split := range splits {
+			assert.Equal(t, test.expectedSplitStarts[i], split.startOffset)
+			assert.Equal(t, test.expectedSplitEnds[i], split.endOffset)
+		}
 	}
 }
 

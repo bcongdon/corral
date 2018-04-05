@@ -21,19 +21,17 @@ func min(a, b int64) int64 {
 	return b
 }
 
-func calculateInputSplits(files []backend.FileInfo, maxSplitSize int64) []inputSplit {
+func calculateInputSplits(file backend.FileInfo, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
 
-	for _, file := range files {
-		for startOffset := int64(0); startOffset < file.Size; startOffset += maxSplitSize {
-			endOffset := min(startOffset+maxSplitSize-1, file.Size-1)
-			newSplit := inputSplit{
-				filename:    file.Name,
-				startOffset: startOffset,
-				endOffset:   endOffset,
-			}
-			splits = append(splits, newSplit)
+	for startOffset := int64(0); startOffset < file.Size; startOffset += maxSplitSize {
+		endOffset := min(startOffset+maxSplitSize-1, file.Size-1)
+		newSplit := inputSplit{
+			filename:    file.Name,
+			startOffset: startOffset,
+			endOffset:   endOffset,
 		}
+		splits = append(splits, newSplit)
 	}
 
 	return splits
