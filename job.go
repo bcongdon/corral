@@ -50,9 +50,16 @@ func (j *Job) processMapperSplit(split inputSplit, mapper Mapper, emitter Emitte
 	}
 
 	scanner := bufio.NewScanner(inputSource)
+	startOffset, _ := inputSource.Seek(0, io.SeekStart)
 	for scanner.Scan() {
 		record := scanner.Text()
 		mapper.Map("", record, emitter)
+
+		// Stop reading when end of inputSplit is reached
+		pos, _ := inputSource.Seek(0, io.SeekCurrent)
+		if split.Size() > 0 && (pos-startOffset) > split.Size() {
+			break
+		}
 	}
 
 	return nil
@@ -146,12 +153,22 @@ func (j *Job) Main() {
 	j.Input = "metamorphosis.txt"
 	j.fileSystem = fs
 
+	var wg sync.WaitGroup
 	for splitID, split := range j.calculateinputSplits() {
-		fmt.Println(split)
-		j.runMapper(uint(splitID), []inputSplit{split}, j.Map)
+		wg.Add(1)
+		go func(sID uint, s inputSplit) {
+			defer wg.Done()
+			j.runMapper(sID, []inputSplit{s}, j.Map)
+		}(uint(splitID), split)
 	}
+	wg.Wait()
 
 	for splitID := uint(0); splitID < j.intermediateBins; splitID++ {
-		j.runReducer(splitID, j.Reduce)
+		wg.Add(1)
+		go func(sID uint) {
+			defer wg.Done()
+			j.runReducer(sID, j.Reduce)
+		}(splitID)
 	}
+	wg.Wait()
 }
