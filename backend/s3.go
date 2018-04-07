@@ -1,21 +1,23 @@
 package backend
 
 import (
+	"errors"
 	"io"
 
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/bcongdon/s3gof3r"
 )
 
 type S3Backend struct {
-	bucket string
+	bucket s3gof3r.Bucket
 	client *s3.S3
 }
 
-func (s *S3Backend) ListFiles() []FileInfo {
+func (s *S3Backend) ListFiles() ([]FileInfo, error) {
 	s3Files := make([]FileInfo, 0)
 
 	params := &s3.ListObjectsInput{
-		Bucket: &s.bucket,
+		Bucket: &s.bucket.Name,
 	}
 	err := s.client.ListObjectsPages(params,
 		func(page *s3.ListObjectsOutput, _ bool) bool {
@@ -27,17 +29,37 @@ func (s *S3Backend) ListFiles() []FileInfo {
 			}
 			return true
 		})
+
+	return s3Files, err
+}
+
+func (s *S3Backend) OpenReader(filename string, startAt int64) (io.ReadCloser, error) {
+	reader, _, err := s.bucket.GetOffsetReader(filename, nil, startAt)
+	return reader, err
+}
+
+func (s *S3Backend) OpenWriter(filename string) (io.WriteCloser, error) {
+	return s.bucket.PutWriter(filename, nil, nil)
+}
+
+func (s *S3Backend) Stat(filename string) (FileInfo, error) {
+	params := &s3.ListObjectsInput{
+		Bucket: &s.bucket.Name,
+		Prefix: &filename,
+	}
+	result, err := s.client.ListObjects(params)
 	if err != nil {
-		panic(err)
+		return FileInfo{}, err
 	}
 
-	return s3Files
-}
+	for _, object := range result.Contents {
+		if *object.Key == filename {
+			return FileInfo{
+				Name: *object.Key,
+				Size: *object.Size,
+			}, nil
+		}
+	}
 
-func (s *S3Backend) OpenReader(filename string) io.ReadSeeker {
-	return nil
-}
-
-func (s *S3Backend) OpenWriter(filename string) io.WriteCloser {
-	return nil
+	return FileInfo{}, errors.New("No file with given filename")
 }

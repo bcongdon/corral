@@ -90,3 +90,7 @@ func TestSplitSize(t *testing.T) {
 		assert.Equal(t, test.expectedSize, split.Size())
 	}
 }
+
+func TestCountingSplitFunc(t *testing.T) {
+	// TODO
+}

@@ -13,8 +13,11 @@ type wordCount struct{}
 func (w wordCount) Map(key, value string, emitter corral.Emitter) {
 	re := regexp.MustCompile("[^a-zA-Z0-9\\s]+")
 
-	sanitized := strings.ToLower(re.ReplaceAllString(value, ""))
+	sanitized := strings.ToLower(re.ReplaceAllString(value, " "))
 	for _, word := range strings.Fields(sanitized) {
+		if len(word) == 0 {
+			continue
+		}
 		emitter.Emit(word, strconv.Itoa(1))
 	}
 }

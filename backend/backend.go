@@ -12,7 +12,7 @@ type NameSizer interface {
 type FileSystem interface {
 	ListFiles() ([]FileInfo, error)
 	Stat(filename string) (FileInfo, error)
-	OpenReader(filename string) (io.ReadSeeker, error)
+	OpenReader(filename string, startAt int64) (io.ReadCloser, error)
 	OpenWriter(filename string) (io.WriteCloser, error)
 }
 

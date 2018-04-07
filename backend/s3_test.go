@@ -1,9 +1,15 @@
 package backend
 
-import "testing"
+import (
+	"testing"
 
-func TestImplementsFileSystem(t *testing.T) {
+	"github.com/stretchr/testify/assert"
+)
+
+func TestS3ImplementsFileSystem(t *testing.T) {
 	backend := S3Backend{}
 	var fileSystem FileSystem
-	fileSystem = backend
+	fileSystem = &backend
+
+	assert.NotNil(t, fileSystem)
 }

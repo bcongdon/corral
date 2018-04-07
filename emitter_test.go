@@ -10,3 +10,11 @@ func TestKeyToBin(t *testing.T) {
 		assert.Equal(t, bin, uint(0x63))
 	}
 }
+
+func TestReducerEmitter(t *testing.T) {
+	// TODO
+}
+
+func TestMapperEmitter(t *testing.T) {
+	// TODO
+}

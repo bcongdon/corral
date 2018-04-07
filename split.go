@@ -1,6 +1,8 @@
 package corral
 
 import (
+	"bufio"
+
 	"github.com/bcongdon/corral/backend"
 )
 
@@ -76,4 +78,12 @@ func packInputSplits(splits []inputSplit, maxBinSize int64) [][]inputSplit {
 		binnedSplits[i] = bin.splits
 	}
 	return binnedSplits
+}
+
+func countingSplitFunc(split bufio.SplitFunc, bytesRead *int64) bufio.SplitFunc {
+	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		adv, tok, err := split(data, atEOF)
+		(*bytesRead) += int64(adv)
+		return adv, tok, err
+	}
 }

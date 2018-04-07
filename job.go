@@ -2,22 +2,25 @@ package corral
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 	"sync"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bcongdon/corral/backend"
 	log "github.com/sirupsen/logrus"
 )
 
 type Job struct {
-	Inputs       []string
-	Map          Mapper
-	Reduce       Reducer
-	MaxSplitSize int64
+	Inputs          []string
+	Map             Mapper
+	Reduce          Reducer
+	MaxSplitSize    int64
+	MaxInputBinSize int64
 
 	fileSystem       backend.FileSystem
 	intermediateBins uint
@@ -25,6 +28,7 @@ type Job struct {
 
 func (j *Job) runMapper(mapperID uint, splits []inputSplit, mapper Mapper) error {
 	emitter := newMapperEmitter(j.intermediateBins, mapperID, &j.fileSystem)
+	defer emitter.close()
 
 	for _, split := range splits {
 		err := j.processMapperSplit(split, mapper, &emitter)
@@ -33,33 +37,38 @@ func (j *Job) runMapper(mapperID uint, splits []inputSplit, mapper Mapper) error
 		}
 	}
 
-	emitter.close()
-
 	return nil
 }
 
 func (j *Job) processMapperSplit(split inputSplit, mapper Mapper, emitter Emitter) error {
-	inputSource, err := j.fileSystem.OpenReader(split.filename)
+	offset := split.startOffset
+	if split.startOffset != 0 {
+		offset--
+	}
+
+	inputSource, err := j.fileSystem.OpenReader(split.filename, split.startOffset)
 	if err != nil {
 		return err
 	}
 
-	if split.startOffset > 0 {
-		_, err := inputSource.Seek(split.startOffset, io.SeekStart)
-		if err != nil {
-			return err
-		}
+	scanner := bufio.NewScanner(inputSource)
+	var bytesRead int64
+	splitter := countingSplitFunc(bufio.ScanLines, &bytesRead)
+	scanner.Split(splitter)
+
+	if split.startOffset != 0 {
+		scanner.Scan()
 	}
 
-	scanner := bufio.NewScanner(inputSource)
-	startOffset, _ := inputSource.Seek(0, io.SeekStart)
 	for scanner.Scan() {
 		record := scanner.Text()
 		mapper.Map("", record, emitter)
+		fmt.Println(record)
 
 		// Stop reading when end of inputSplit is reached
-		pos, _ := inputSource.Seek(0, io.SeekCurrent)
-		if split.Size() > 0 && (pos-startOffset) > split.Size() {
+		pos := bytesRead
+		fmt.Println(split.Size(), pos)
+		if split.Size() > 0 && pos > split.Size() {
 			break
 		}
 	}
@@ -93,7 +102,7 @@ func (j *Job) runReducer(binID uint, reducer Reducer) error {
 	var waitGroup sync.WaitGroup
 
 	for _, file := range intermediateFiles {
-		reader, err := j.fileSystem.OpenReader(file.Name)
+		reader, err := j.fileSystem.OpenReader(file.Name, 0)
 		if err != nil {
 			return err
 		}
@@ -153,15 +162,35 @@ func NewJob(mapper Mapper, reducer Reducer) *Job {
 	return &Job{
 		Map:              mapper,
 		Reduce:           reducer,
-		intermediateBins: 10,
+		intermediateBins: 1,
 
-		// Default MaxSplitSize is 10MB
-		// MaxSplitSize: 10 * 1000000,
-		MaxSplitSize: 1000,
+		// Default MaxSplitSize is 50MB
+		MaxSplitSize: 50 * 1000000,
+
+		// Default MaxInputBinSize is 1.5GB
+		MaxInputBinSize: 1500 * 1000000,
 	}
 }
 
+func (j *Job) runningInLambda() bool {
+	expectedEnvVars := []string{"LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV", "LAMBDA_RUNTIME_DIR"}
+	for _, envVar := range expectedEnvVars {
+		if os.Getenv(envVar) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func HandleRequest(ctx context.Context, task task) (string, error) {
+	return fmt.Sprintf("Hello %d!", task.Phase), nil
+}
+
 func (j *Job) Main() {
+	if j.runningInLambda() {
+		lambda.Start(HandleRequest)
+	}
+
 	flag.Parse()
 	j.Inputs = flag.Args()
 
@@ -170,21 +199,24 @@ func (j *Job) Main() {
 	j.fileSystem = fs
 
 	var wg sync.WaitGroup
-	for splitID, split := range j.inputSplits() {
+	inputSplits := j.inputSplits()
+
+	inputBins := packInputSplits(inputSplits, j.MaxInputBinSize)
+	for binID, bin := range inputBins {
 		wg.Add(1)
-		go func(sID uint, s inputSplit) {
+		go func(bID uint, b []inputSplit) {
 			defer wg.Done()
-			j.runMapper(sID, []inputSplit{s}, j.Map)
-		}(uint(splitID), split)
+			j.runMapper(bID, b, j.Map)
+		}(uint(binID), bin)
 	}
 	wg.Wait()
 
-	for splitID := uint(0); splitID < j.intermediateBins; splitID++ {
+	for binID := uint(0); binID < j.intermediateBins; binID++ {
 		wg.Add(1)
-		go func(sID uint) {
+		go func(bID uint) {
 			defer wg.Done()
-			j.runReducer(sID, j.Reduce)
-		}(splitID)
+			j.runReducer(bID, j.Reduce)
+		}(binID)
 	}
 	wg.Wait()
 }
