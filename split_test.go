@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bcongdon/corral/backend"
+	"github.com/bcongdon/corral/internal/pkg/backend"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -61,7 +61,7 @@ func TestCalculateInputSplits(t *testing.T) {
 			Size: test.fileSize,
 		}
 
-		splits := calculateInputSplits(fInfo, test.maxSplitSize)
+		splits := splitInputFile(fInfo, test.maxSplitSize)
 
 		assert.Equal(t, len(test.expectedSplitStarts), len(splits), fmt.Sprintln(splits))
 		for i, split := range splits {

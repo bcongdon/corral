@@ -33,5 +33,6 @@ func (w wordCount) Reduce(key string, values corral.ValueIterator, emitter corra
 func main() {
 	job := corral.NewJob(wordCount{}, wordCount{})
 
-	job.Main()
+	driver := corral.NewDriver(job)
+	driver.Main()
 }

@@ -3,7 +3,7 @@ package corral
 import (
 	"bufio"
 
-	"github.com/bcongdon/corral/backend"
+	"github.com/bcongdon/corral/internal/pkg/backend"
 )
 
 type inputSplit struct {
@@ -23,7 +23,7 @@ func min(a, b int64) int64 {
 	return b
 }
 
-func calculateInputSplits(file backend.FileInfo, maxSplitSize int64) []inputSplit {
+func splitInputFile(file backend.FileInfo, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
 
 	for startOffset := int64(0); startOffset < file.Size; startOffset += maxSplitSize {

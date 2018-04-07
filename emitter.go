@@ -2,25 +2,28 @@ package corral
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io"
+	"strings"
 	"sync"
 
-	"github.com/bcongdon/corral/backend"
+	"github.com/bcongdon/corral/internal/pkg/backend"
 	log "github.com/sirupsen/logrus"
 )
 
 type Emitter interface {
 	Emit(key, value string) error
+	Close() error
 }
 
 type reducerEmitter struct {
-	writer io.Writer
+	writer io.WriteCloser
 	mut    *sync.Mutex
 }
 
-func newReducerEmitter(writer io.Writer) *reducerEmitter {
+func newReducerEmitter(writer io.WriteCloser) *reducerEmitter {
 	return &reducerEmitter{
 		writer: writer,
 		mut:    &sync.Mutex{},
@@ -33,6 +36,10 @@ func (e *reducerEmitter) Emit(key, value string) error {
 
 	_, err := e.writer.Write([]byte(fmt.Sprintf("%s\t%s\n", key, value)))
 	return err
+}
+
+func (e *reducerEmitter) Close() error {
+	return e.writer.Close()
 }
 
 type mapperEmitter struct {
@@ -85,8 +92,17 @@ func (me *mapperEmitter) Emit(key, value string) error {
 	return err
 }
 
-func (me *mapperEmitter) close() {
+func (me *mapperEmitter) Close() error {
+	errs := make([]string, 0)
 	for _, writer := range me.writers {
-		writer.Close()
+		err := writer.Close()
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
 	}
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, "\n"))
+	}
+
+	return nil
 }

@@ -7,9 +7,10 @@ const (
 	ReducePhase
 )
 
-type task struct {
-	Phase       Phase
-	InputSplits []inputSplit
-	MapperID    int
-	BinID       int
+type Task struct {
+	Phase              Phase
+	MapTask            MapTask
+	ReduceTask         interface{}
+	FileSystemType     string
+	FileSystemLocation string
 }
