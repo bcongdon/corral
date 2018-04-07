@@ -3,6 +3,7 @@ package backend
 import (
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
@@ -20,6 +21,9 @@ func (l *LocalBackend) ListFiles() ([]FileInfo, error) {
 			log.Error(err)
 			return err
 		}
+		if f.IsDir() {
+			return nil
+		}
 		files = append(files, FileInfo{
 			Name: f.Name(),
 			Size: f.Size(),
@@ -30,16 +34,22 @@ func (l *LocalBackend) ListFiles() ([]FileInfo, error) {
 	return files, err
 }
 
-func (l *LocalBackend) OpenReader(path string) (io.ReadSeeker, error) {
-	return os.OpenFile(path, os.O_RDONLY, 0600)
+func (l *LocalBackend) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
+	file, err := os.OpenFile(path.Join(l.basePath, filePath), os.O_RDONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	_, err = file.Seek(startAt, io.SeekStart)
+	return file, err
 }
 
-func (l *LocalBackend) OpenWriter(path string) (io.WriteCloser, error) {
-	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+func (l *LocalBackend) OpenWriter(filePath string) (io.WriteCloser, error) {
+	filePath = path.Join(l.basePath, filePath)
+	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 
-func (l *LocalBackend) Stat(path string) (FileInfo, error) {
-	fInfo, err := os.Stat(path)
+func (l *LocalBackend) Stat(filePath string) (FileInfo, error) {
+	fInfo, err := os.Stat(path.Join(l.basePath, filePath))
 	if err != nil {
 		return FileInfo{}, err
 	}
