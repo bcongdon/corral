@@ -4,12 +4,13 @@ import (
 	"errors"
 	"io"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bcongdon/s3gof3r"
 )
 
 type S3Backend struct {
-	bucket s3gof3r.Bucket
+	bucket *s3gof3r.Bucket
 	client *s3.S3
 }
 
@@ -62,4 +63,25 @@ func (s *S3Backend) Stat(filename string) (FileInfo, error) {
 	}
 
 	return FileInfo{}, errors.New("No file with given filename")
+}
+
+func (s *S3Backend) init(location string) {
+	sess, err := session.NewSession()
+	if err != nil {
+		panic(err)
+	}
+	s.client = s3.New(sess)
+
+	creds, err := sess.Config.Credentials.Get()
+	if err != nil {
+		panic(err)
+	}
+
+	s3gof3rClient := s3gof3r.New("", s3gof3r.Keys{
+		AccessKey:     creds.AccessKeyID,
+		SecretKey:     creds.SecretAccessKey,
+		SecurityToken: creds.SessionToken,
+	})
+
+	s.bucket = s3gof3rClient.Bucket(location)
 }
