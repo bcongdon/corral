@@ -2,10 +2,12 @@ package corral
 
 import (
 	"flag"
-	"os"
+	"strings"
 	"sync"
 
 	"github.com/bcongdon/corral/internal/pkg/backend"
+	log "github.com/sirupsen/logrus"
+	pb "gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -17,13 +19,12 @@ type Driver struct {
 
 type Config struct {
 	Inputs             []string
-	MaxSplitSize       int64
-	MaxInputBinSize    int64
+	SplitSize          int64
+	MapBinSize         int64
+	ReduceBinSize      int64
 	MaxConcurrency     int
 	FileSystemType     backend.FileSystemType
 	FileSystemLocation string
-
-	intermediateBins uint
 }
 
 func newConfig() *Config {
@@ -32,22 +33,29 @@ func newConfig() *Config {
 	}
 	return &Config{
 		Inputs:             flag.Args(),
-		MaxSplitSize:       100 * 1024 * 1024,
-		MaxInputBinSize:    500 * 1024 * 1024,
-		MaxConcurrency:     100,
+		SplitSize:          100 * 1024 * 1024, // Default input split size is 100Mb
+		MapBinSize:         500 * 1024 * 1024, // Default map bin size is 500Mb
+		ReduceBinSize:      500 * 1024 * 1024, // Default reduce bin size is 500Mb
+		MaxConcurrency:     100,               // TODO: Not currently enforced
 		FileSystemType:     backend.Local,
 		FileSystemLocation: ".",
-		intermediateBins:   100,
 	}
 }
 
+type Option func(*Config)
+
 // NewDriver creates a new Driver with the provided job and optional configuration
-func NewDriver(job *Job, options ...func(*Config)) *Driver {
+func NewDriver(job *Job, options ...Option) *Driver {
 	d := &Driver{}
 
 	c := newConfig()
 	for _, f := range options {
 		f(c)
+	}
+
+	if c.SplitSize > c.MapBinSize {
+		log.Warn("Configured Split Size is larger than Map Bin size")
+		c.SplitSize = c.MapBinSize
 	}
 
 	d.config = c
@@ -56,20 +64,31 @@ func NewDriver(job *Job, options ...func(*Config)) *Driver {
 	return d
 }
 
-// runningInLambda infers if the program is running in AWS lambda via inspection of the environment
-func runningInLambda() bool {
-	expectedEnvVars := []string{"LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV", "LAMBDA_RUNTIME_DIR"}
-	for _, envVar := range expectedEnvVars {
-		if os.Getenv(envVar) == "" {
-			return false
-		}
+func WithSplitSize(s int64) Option {
+	return func(c *Config) {
+		c.SplitSize = s
 	}
-	return true
 }
 
-func MaxSplitSize(m int64) func(*Config) {
+func WithMapBinSize(s int64) Option {
 	return func(c *Config) {
-		c.MaxSplitSize = m
+		c.MapBinSize = s
+	}
+}
+
+func WithReduceBinSize(s int64) Option {
+	return func(c *Config) {
+		c.ReduceBinSize = s
+	}
+}
+
+func WithWorkingLocation(location string) Option {
+	return func(c *Config) {
+		if strings.HasPrefix(location, "s3://") {
+			c.FileSystemType = backend.S3
+			location = strings.TrimPrefix(location, "s3://")
+		}
+		c.FileSystemLocation = location
 	}
 }
 
@@ -84,28 +103,37 @@ func (d *Driver) run() {
 	d.job.config = d.config
 
 	var wg sync.WaitGroup
-	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.MaxSplitSize)
+	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
+	if len(inputSplits) == 0 {
+		log.Warnf("No input splits")
+		return
+	}
 
-	// Mapper Phase
-	inputBins := packInputSplits(inputSplits, d.config.MaxInputBinSize)
+	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
+	bar := pb.New(len(inputBins)).Prefix("Map").Start()
 	for binID, bin := range inputBins {
 		wg.Add(1)
 		go func(bID uint, b []inputSplit) {
 			defer wg.Done()
+			defer bar.Increment()
 			d.job.runMapper(bID, b)
 		}(uint(binID), bin)
 	}
 	wg.Wait()
+	bar.Finish()
 
 	// Reducer Phase
-	for binID := uint(0); binID < d.config.intermediateBins; binID++ {
+	bar = pb.New(int(d.job.intermediateBins)).Prefix("Reduce").Start()
+	for binID := uint(0); binID < d.job.intermediateBins; binID++ {
 		wg.Add(1)
 		go func(bID uint) {
 			defer wg.Done()
+			defer bar.Increment()
 			d.job.runReducer(bID)
 		}(binID)
 	}
 	wg.Wait()
+	bar.Finish()
 }
 
 // Main starts the Driver.

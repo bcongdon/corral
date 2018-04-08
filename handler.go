@@ -3,6 +3,7 @@ package corral
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/bcongdon/corral/internal/pkg/backend"
 )
@@ -10,6 +11,17 @@ import (
 var (
 	currentJob *Job
 )
+
+// runningInLambda infers if the program is running in AWS lambda via inspection of the environment
+func runningInLambda() bool {
+	expectedEnvVars := []string{"LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV", "LAMBDA_RUNTIME_DIR"}
+	for _, envVar := range expectedEnvVars {
+		if os.Getenv(envVar) == "" {
+			return false
+		}
+	}
+	return true
+}
 
 func handleRequest(ctx context.Context, task Task) (string, error) {
 	fs := backend.InitFilesystem(task.FileSystemType, task.FileSystemLocation)

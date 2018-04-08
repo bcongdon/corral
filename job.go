@@ -16,13 +16,14 @@ type Job struct {
 	Map    Mapper
 	Reduce Reducer
 
-	fileSystem backend.FileSystem
-	config     *Config
+	fileSystem       backend.FileSystem
+	config           *Config
+	intermediateBins uint
 }
 
 // Logic for running a single map task
 func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
-	emitter := newMapperEmitter(j.config.intermediateBins, mapperID, &j.fileSystem)
+	emitter := newMapperEmitter(j.intermediateBins, mapperID, &j.fileSystem)
 	defer emitter.close()
 
 	for _, split := range splits {
@@ -59,11 +60,9 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 	for scanner.Scan() {
 		record := scanner.Text()
 		j.Map.Map("", record, emitter)
-		fmt.Println(record)
 
 		// Stop reading when end of inputSplit is reached
 		pos := bytesRead
-		fmt.Println(split.Size(), pos)
 		if split.Size() > 0 && pos > split.Size() {
 			break
 		}
@@ -89,6 +88,7 @@ func (j *Job) runReducer(binID uint) error {
 
 	// Open emitter for output data
 	emitWriter, err := j.fileSystem.OpenWriter(fmt.Sprintf("output-part-%d", binID))
+	defer emitWriter.Close()
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (j *Job) runReducer(binID uint) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("Reducing on intermediate file: %s", file.Name)
+		// log.Infof("Reducing on intermediate file: %s", file.Name)
 
 		// Feed intermediate data into reducers
 		decoder := json.NewDecoder(reader)
@@ -141,18 +141,27 @@ func (j *Job) runReducer(binID uint) error {
 	return nil
 }
 
-// inputSplits calculates all input files' inputSplits
+// inputSplits calculates all input files' inputSplits.
+// inputSplits also determines and saves the number of intermediate bins that will be used during the shuffle.
 func (j *Job) inputSplits(files []string, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
+	var totalSize int64
 	for _, inputFileName := range files {
 		fInfo, err := j.fileSystem.Stat(inputFileName)
 		if err != nil {
-			log.Warn("Unable to load input file: %s (%s)", inputFileName, err)
+			log.Warnf("Unable to load input file: %s (%s)", inputFileName, err)
 			continue
 		}
 
+		totalSize += fInfo.Size
 		splits = append(splits, splitInputFile(fInfo, maxSplitSize)...)
 	}
+
+	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 0.75)
+	if j.intermediateBins == 0 {
+		j.intermediateBins = 1
+	}
+
 	return splits
 }
 

@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -11,8 +12,12 @@ import (
 
 func getS3TestBackend(t *testing.T) *S3Backend {
 	backend := &S3Backend{}
-	// TODO: Load test bucket from os.Environ
-	err := backend.init("test-bucketfdasfasdfas34432")
+
+	bucket := os.Getenv("AWS_TEST_BUCKET")
+	if bucket == "" {
+		t.Fatal("No test bucket is set under $AWS_TEST_BUCKET")
+	}
+	err := backend.init(bucket)
 	if err != nil {
 		t.Skipf("Could not initialize S3 filesystem: %s", err)
 	}
