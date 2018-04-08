@@ -1,6 +1,8 @@
 package corral
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -92,5 +94,26 @@ func TestSplitSize(t *testing.T) {
 }
 
 func TestCountingSplitFunc(t *testing.T) {
-	// TODO
+	var bytesRead int64
+	splitFunc := countingSplitFunc(bufio.ScanLines, &bytesRead)
+
+	buf := new(bytes.Buffer)
+	buf.Write([]byte("foo\n123456\na"))
+
+	scanner := bufio.NewScanner(buf)
+	scanner.Split(splitFunc)
+
+	assert.Equal(t, int64(0), bytesRead)
+
+	scanner.Scan()
+	assert.Equal(t, int64(4), bytesRead)
+	assert.Equal(t, "foo", scanner.Text())
+
+	scanner.Scan()
+	assert.Equal(t, int64(4+7), bytesRead)
+	assert.Equal(t, "123456", scanner.Text())
+
+	scanner.Scan()
+	assert.Equal(t, int64(4+7+1), bytesRead)
+	assert.Equal(t, "a", scanner.Text())
 }

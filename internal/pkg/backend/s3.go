@@ -3,6 +3,7 @@ package backend
 import (
 	"errors"
 	"io"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -65,16 +66,17 @@ func (s *S3Backend) Stat(filename string) (FileInfo, error) {
 	return FileInfo{}, errors.New("No file with given filename")
 }
 
-func (s *S3Backend) init(location string) {
+func (s *S3Backend) init(location string) error {
+	os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	sess, err := session.NewSession()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	s.client = s3.New(sess)
 
 	creds, err := sess.Config.Credentials.Get()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	s3gof3rClient := s3gof3r.New("", s3gof3r.Keys{
@@ -84,4 +86,6 @@ func (s *S3Backend) init(location string) {
 	})
 
 	s.bucket = s3gof3rClient.Bucket(location)
+	s.bucket.Md5Check = false
+	return nil
 }

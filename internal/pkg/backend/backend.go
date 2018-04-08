@@ -22,7 +22,7 @@ type FileSystem interface {
 	Stat(filename string) (FileInfo, error)
 	OpenReader(filename string, startAt int64) (io.ReadCloser, error)
 	OpenWriter(filename string) (io.WriteCloser, error)
-	init(location string)
+	init(location string) error
 }
 
 // FileInfo provides information about a file

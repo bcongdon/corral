@@ -59,6 +59,7 @@ func (l *LocalFilesystem) Stat(filePath string) (FileInfo, error) {
 	}, nil
 }
 
-func (l *LocalFilesystem) init(basePath string) {
+func (l *LocalFilesystem) init(basePath string) error {
 	l.basePath = basePath
+	return nil
 }
