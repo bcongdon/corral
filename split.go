@@ -6,12 +6,17 @@ import (
 	"github.com/bcongdon/corral/internal/pkg/backend"
 )
 
+// inputSplit contains the information about a contiguous chunk of an input file.
+// startOffset and endOffset are inclusive. For example, if the startOffset was 10
+// and the endOffset was 14, then the inputSplit would describe a 5 byte chunk
+// of the file.
 type inputSplit struct {
-	filename    string
-	startOffset int64
-	endOffset   int64
+	filename    string // The file that the input split operates on
+	startOffset int64  // The starting byte index of the split in the file
+	endOffset   int64  // The ending byte index (inclusive) of the split in the file
 }
 
+// Size returns the number of bytes that the inputSplit spans
 func (i inputSplit) Size() int64 {
 	return i.endOffset - i.startOffset + 1
 }
@@ -39,9 +44,11 @@ func splitInputFile(file backend.FileInfo, maxSplitSize int64) []inputSplit {
 	return splits
 }
 
+// inputBin is a collection of inputSplits.
 type inputBin struct {
 	splits []inputSplit
-	size   int64
+	// The total size of the inputBin. (The sum of the size of all splits)
+	size int64
 }
 
 // packInputSplits partitions inputSplits into bins.
@@ -80,6 +87,9 @@ func packInputSplits(splits []inputSplit, maxBinSize int64) [][]inputSplit {
 	return binnedSplits
 }
 
+// countingSplitFunc wraps a bufio.SplitFunc and keeps track of the number of bytes advanced.
+// Upon each scan, the value of *bytesRead will be incremented by the number of bytes
+// that the SplitFunc advances.
 func countingSplitFunc(split bufio.SplitFunc, bytesRead *int64) bufio.SplitFunc {
 	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		adv, tok, err := split(data, atEOF)

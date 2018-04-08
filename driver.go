@@ -20,7 +20,7 @@ type Config struct {
 	MaxSplitSize       int64
 	MaxInputBinSize    int64
 	MaxConcurrency     int
-	FileSystemType     string
+	FileSystemType     backend.FileSystemType
 	FileSystemLocation string
 
 	intermediateBins uint
@@ -41,6 +41,7 @@ func newConfig() *Config {
 	}
 }
 
+// NewDriver creates a new Driver with the provided job and optional configuration
 func NewDriver(job *Job, options ...func(*Config)) *Driver {
 	d := &Driver{}
 
@@ -55,6 +56,7 @@ func NewDriver(job *Job, options ...func(*Config)) *Driver {
 	return d
 }
 
+// runningInLambda infers if the program is running in AWS lambda via inspection of the environment
 func runningInLambda() bool {
 	expectedEnvVars := []string{"LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV", "LAMBDA_RUNTIME_DIR"}
 	for _, envVar := range expectedEnvVars {
@@ -71,10 +73,11 @@ func MaxSplitSize(m int64) func(*Config) {
 	}
 }
 
+// run starts the Driver
 func (d *Driver) run() {
 	if runningInLambda() {
 		currentJob = d.job
-		lambda.Start(HandleRequest)
+		lambda.Start(handleRequest)
 	}
 
 	d.job.fileSystem = backend.InitFilesystem(d.config.FileSystemType, d.config.FileSystemLocation)
@@ -89,7 +92,7 @@ func (d *Driver) run() {
 		wg.Add(1)
 		go func(bID uint, b []inputSplit) {
 			defer wg.Done()
-			d.job.RunMapper(bID, b)
+			d.job.runMapper(bID, b)
 		}(uint(binID), bin)
 	}
 	wg.Wait()
@@ -105,6 +108,8 @@ func (d *Driver) run() {
 	wg.Wait()
 }
 
+// Main starts the Driver.
+// TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
 	d.run()
 }

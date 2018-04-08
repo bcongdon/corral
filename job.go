@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Job is the logical container for a MapReduce job
 type Job struct {
 	Map    Mapper
 	Reduce Reducer
@@ -19,16 +20,10 @@ type Job struct {
 	config     *Config
 }
 
-type MapTask struct {
-	MapperID   uint
-	Splits     []inputSplit
-	FileSystem backend.FileSystem
-}
-
 // Logic for running a single map task
-func (j *Job) RunMapper(mapperID uint, splits []inputSplit) error {
+func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 	emitter := newMapperEmitter(j.config.intermediateBins, mapperID, &j.fileSystem)
-	defer emitter.Close()
+	defer emitter.close()
 
 	for _, split := range splits {
 		err := j.runMapperSplit(split, &emitter)
@@ -40,6 +35,7 @@ func (j *Job) RunMapper(mapperID uint, splits []inputSplit) error {
 	return nil
 }
 
+// runMapperSplit runs the mapper on a single inputSplit
 func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 	offset := split.startOffset
 	if split.startOffset != 0 {
@@ -145,6 +141,7 @@ func (j *Job) runReducer(binID uint) error {
 	return nil
 }
 
+// inputSplits calculates all input files' inputSplits
 func (j *Job) inputSplits(files []string, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
 	for _, inputFileName := range files {
@@ -159,6 +156,7 @@ func (j *Job) inputSplits(files []string, maxSplitSize int64) []inputSplit {
 	return splits
 }
 
+// NewJob creates a new job from a Mapper and Reducer.
 func NewJob(mapper Mapper, reducer Reducer) *Job {
 	return &Job{
 		Map:    mapper,

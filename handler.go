@@ -11,12 +11,12 @@ var (
 	currentJob *Job
 )
 
-func HandleRequest(ctx context.Context, task Task) (string, error) {
+func handleRequest(ctx context.Context, task Task) (string, error) {
 	fs := backend.InitFilesystem(task.FileSystemType, task.FileSystemLocation)
 	currentJob.fileSystem = fs
 
 	if task.Phase == MapPhase {
-		err := currentJob.RunMapper(task.MapTask.MapperID, task.MapTask.Splits)
+		err := currentJob.runMapper(task.MapTask.MapperID, task.MapTask.Splits)
 		return "", err
 	} else if task.Phase == ReducePhase {
 		err := currentJob.runReducer(0)

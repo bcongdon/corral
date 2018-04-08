@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var packingTests = []struct {
-	splitSizes []int
-	maxBinSize int64
-}{
-	{[]int{}, 0},
-	{[]int{1, 2, 3}, 3},
-	{[]int{3, 3, 1, 2, 3}, 3},
-}
-
 func TestPackInputSplits(t *testing.T) {
+	var packingTests = []struct {
+		splitSizes []int
+		maxBinSize int64
+	}{
+		{[]int{}, 0},
+		{[]int{1, 2, 3}, 3},
+		{[]int{3, 3, 1, 2, 3}, 3},
+	}
+
 	for _, test := range packingTests {
 		splits := make([]inputSplit, len(test.splitSizes))
 		for i, size := range test.splitSizes {
@@ -44,18 +44,18 @@ func TestPackInputSplits(t *testing.T) {
 	}
 }
 
-var calculateSplitTests = []struct {
-	fileSize            int64
-	maxSplitSize        int64
-	expectedSplitStarts []int64
-	expectedSplitEnds   []int64
-}{
-	{3, 3, []int64{0}, []int64{2}},
-	{10, 3, []int64{0, 3, 6, 9}, []int64{2, 5, 8, 9}},
-	{5, 10, []int64{0}, []int64{4}},
-}
-
 func TestCalculateInputSplits(t *testing.T) {
+	var calculateSplitTests = []struct {
+		fileSize            int64
+		maxSplitSize        int64
+		expectedSplitStarts []int64
+		expectedSplitEnds   []int64
+	}{
+		{3, 3, []int64{0}, []int64{2}},
+		{10, 3, []int64{0, 3, 6, 9}, []int64{2, 5, 8, 9}},
+		{5, 10, []int64{0}, []int64{4}},
+	}
+
 	for _, test := range calculateSplitTests {
 		fInfo := backend.FileInfo{
 			Size: test.fileSize,
@@ -71,17 +71,17 @@ func TestCalculateInputSplits(t *testing.T) {
 	}
 }
 
-var splitSizeTests = []struct {
-	startOffset  int64
-	endOffset    int64
-	expectedSize int64
-}{
-	{0, 9, 10},
-	{100, 999, 900},
-	{1000, 1000, 1},
-}
-
 func TestSplitSize(t *testing.T) {
+	var splitSizeTests = []struct {
+		startOffset  int64
+		endOffset    int64
+		expectedSize int64
+	}{
+		{0, 9, 10},
+		{100, 999, 900},
+		{1000, 1000, 1},
+	}
+
 	for _, test := range splitSizeTests {
 		split := inputSplit{
 			startOffset: test.startOffset,

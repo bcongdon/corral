@@ -4,18 +4,19 @@ import (
 	"io"
 )
 
-type FileSystemType string
+// FileSystemType is an identifier for supported FileSystems
+type FileSystemType int
 
+// Identifiers for supported FileSystemTypes
 const (
-	Local = "local"
-	S3    = "s3"
+	Local FileSystemType = iota
+	S3
 )
 
-type NameSizer interface {
-	Name() string
-	Size() int64
-}
-
+// FileSystem provides the file backend for MapReduce jobs.
+// Input data is read from a file system. Intermediate and output data
+// is written to a file system.
+// This is abstracted to allow remote filesystems like S3 to be supported.
 type FileSystem interface {
 	ListFiles() ([]FileInfo, error)
 	Stat(filename string) (FileInfo, error)
@@ -24,12 +25,15 @@ type FileSystem interface {
 	init(location string)
 }
 
+// FileInfo provides information about a file
 type FileInfo struct {
-	Name string
-	Size int64
+	Name string // file path
+	Size int64  // file size in bytes
 }
 
-func InitFilesystem(fsType, location string) FileSystem {
+// InitFilesystem intializes a filesystem of the given type relative to
+// the specified location.
+func InitFilesystem(fsType FileSystemType, location string) FileSystem {
 	var fs FileSystem
 	switch fsType {
 	case Local:
