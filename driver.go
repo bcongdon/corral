@@ -12,11 +12,13 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+// Driver controls the execution of a MapReduce Job
 type Driver struct {
 	job    *Job
 	config *Config
 }
 
+// Config configures a Driver's execution of jobs
 type Config struct {
 	Inputs             []string
 	SplitSize          int64
@@ -64,6 +66,7 @@ func NewDriver(job *Job, options ...Option) *Driver {
 	return d
 }
 
+// WithSplitSize sets the SplitSize of the Driver
 func WithSplitSize(s int64) Option {
 	return func(c *Config) {
 		c.SplitSize = s
