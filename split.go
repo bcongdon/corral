@@ -11,14 +11,14 @@ import (
 // and the endOffset was 14, then the inputSplit would describe a 5 byte chunk
 // of the file.
 type inputSplit struct {
-	filename    string // The file that the input split operates on
-	startOffset int64  // The starting byte index of the split in the file
-	endOffset   int64  // The ending byte index (inclusive) of the split in the file
+	Filename    string // The file that the input split operates on
+	StartOffset int64  // The starting byte index of the split in the file
+	EndOffset   int64  // The ending byte index (inclusive) of the split in the file
 }
 
 // Size returns the number of bytes that the inputSplit spans
 func (i inputSplit) Size() int64 {
-	return i.endOffset - i.startOffset + 1
+	return i.EndOffset - i.StartOffset + 1
 }
 
 func min(a, b int64) int64 {
@@ -34,9 +34,9 @@ func splitInputFile(file corfs.FileInfo, maxSplitSize int64) []inputSplit {
 	for startOffset := int64(0); startOffset < file.Size; startOffset += maxSplitSize {
 		endOffset := min(startOffset+maxSplitSize-1, file.Size-1)
 		newSplit := inputSplit{
-			filename:    file.Name,
-			startOffset: startOffset,
-			endOffset:   endOffset,
+			Filename:    file.Name,
+			StartOffset: startOffset,
+			EndOffset:   endOffset,
 		}
 		splits = append(splits, newSplit)
 	}

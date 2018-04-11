@@ -28,13 +28,14 @@ func runningInLambda() bool {
 func handleRequest(ctx context.Context, task task) (string, error) {
 	fs := corfs.InitFilesystem(task.FileSystemType, task.FileSystemLocation)
 	currentJob.fileSystem = fs
+	currentJob.intermediateBins = task.IntermediateBins
 
 	if task.Phase == MapPhase {
 		err := currentJob.runMapper(task.BinID, task.Splits)
-		return "", err
+		return fmt.Sprintf("%v", task), err
 	} else if task.Phase == ReducePhase {
 		err := currentJob.runReducer(task.BinID)
-		return "", err
+		return fmt.Sprintf("%v", task), err
 	}
 	return "", fmt.Errorf("Unknown phase: %d", task.Phase)
 }
@@ -49,6 +50,7 @@ func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSpli
 		Phase:              MapPhase,
 		BinID:              binID,
 		Splits:             inputSplits,
+		IntermediateBins:   job.intermediateBins,
 		FileSystemType:     corfs.S3,
 		FileSystemLocation: job.config.FileSystemLocation,
 	}

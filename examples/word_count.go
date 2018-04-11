@@ -37,8 +37,8 @@ func main() {
 	job := corral.NewJob(wordCount{}, wordCount{})
 
 	options := []corral.Option{
-		corral.WithSplitSize(10 * 1024),
-		corral.WithMapBinSize(10 * 1024),
+		corral.WithSplitSize(1 * 1024),
+		corral.WithMapBinSize(1 * 1024),
 	}
 
 	useS3 := flag.Bool("s3", false, "use s3 as the backend")

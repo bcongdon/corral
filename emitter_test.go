@@ -114,7 +114,6 @@ func TestMapperEmitter(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Len(t, mFs.writers, 3)
-	fmt.Println(mFs.writers)
 
 	assert.Equal(t, `{"key":"key123","value":"val2"}`+"\n", string(mFs.writers["map-bin0-0.out"].Bytes()))
 	assert.Equal(t, `{"key":"key359","value":"val3"}`+"\n", string(mFs.writers["map-bin1-0.out"].Bytes()))

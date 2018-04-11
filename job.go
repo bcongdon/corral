@@ -38,12 +38,12 @@ func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 
 // runMapperSplit runs the mapper on a single inputSplit
 func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
-	offset := split.startOffset
-	if split.startOffset != 0 {
+	offset := split.StartOffset
+	if split.StartOffset != 0 {
 		offset--
 	}
 
-	inputSource, err := j.fileSystem.OpenReader(split.filename, split.startOffset)
+	inputSource, err := j.fileSystem.OpenReader(split.Filename, split.StartOffset)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 	splitter := countingSplitFunc(bufio.ScanLines, &bytesRead)
 	scanner.Split(splitter)
 
-	if split.startOffset != 0 {
+	if split.StartOffset != 0 {
 		scanner.Scan()
 	}
 

@@ -17,6 +17,7 @@ const (
 type task struct {
 	Phase              Phase
 	BinID              uint
+	IntermediateBins   uint
 	Splits             []inputSplit
 	FileSystemType     corfs.FileSystemType
 	FileSystemLocation string

@@ -3,6 +3,8 @@ package corlambda
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,21 +31,43 @@ func NewLambdaClient() *LambdaClient {
 	}
 }
 
-func (l *LambdaClient) DeployFunction(functionName string) {
-	functionCode, err := l.compile()
-	if err != nil {
-		panic(err)
-	}
-	err = l.createFunction(functionName, functionCode)
-	if err != nil {
-		err = l.updateFunction(functionName, functionCode)
-	}
-	if err != nil {
-		panic(err)
-	}
+func functionNeedsUpdate(functionCode []byte, cfg *lambda.FunctionConfiguration) bool {
+	codeHash := sha256.New()
+	codeHash.Write(functionCode)
+	codeHashDigest := base64.StdEncoding.EncodeToString(codeHash.Sum(nil))
+	return codeHashDigest == *cfg.CodeSha256
 }
 
-func build(binName string) (string, error) {
+func (l *LambdaClient) DeployFunction(functionName string) error {
+	functionCode, err := l.buildPackage()
+	if err != nil {
+		panic(err)
+	}
+
+	exists, err := l.getFunction(functionName)
+	if exists != nil && err == nil {
+		if functionNeedsUpdate(functionCode, exists.Configuration) {
+			log.Debugf("Updating Lambda function '%s'", functionName)
+			return l.updateFunction(functionName, functionCode)
+		}
+		log.Debugf("Function '%s' is already up-to-date", functionName)
+		return nil
+	}
+
+	log.Debugf("Creating Lambda function '%s'", functionName)
+	return l.createFunction(functionName, functionCode)
+}
+
+func (l *LambdaClient) DeleteFunction(functionName string) error {
+	deleteInput := &lambda.DeleteFunctionInput{
+		FunctionName: aws.String(functionName),
+	}
+
+	_, err := l.client.DeleteFunction(deleteInput)
+	return err
+}
+
+func crossCompile(binName string) (string, error) {
 	tmpDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return "", err
@@ -51,11 +75,10 @@ func build(binName string) (string, error) {
 
 	outputPath := filepath.Join(tmpDir, binName)
 
-	flags := `-extldflags "-static"`
 	args := []string{
 		"build",
 		"-o", outputPath,
-		"--ldflags", flags,
+		"-ldflags", "-s -w",
 		".",
 	}
 	cmd := exec.Command("go", args...)
@@ -70,39 +93,37 @@ func build(binName string) (string, error) {
 	return outputPath, nil
 }
 
-func (l *LambdaClient) compile() ([]byte, error) {
+func (l *LambdaClient) buildPackage() ([]byte, error) {
 	log.Debug("Compiling lambda function for Lambda")
-	binFile, err := build("lambda_artifact")
+	binFile, err := crossCompile("lambda_artifact")
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 	defer os.RemoveAll(filepath.Dir(binFile))
 
 	log.Debug("Opening recompiled binary to be zipped")
 	binReader, err := os.Open(binFile)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	binInfo, err := os.Stat(binFile)
 
 	zipBuf := new(bytes.Buffer)
 	archive := zip.NewWriter(zipBuf)
-
-	log.Debug("Adding binary to zip archive")
-
-	header, err := zip.FileInfoHeader(binInfo)
-	if err != nil {
-		return []byte{}, err
+	header := &zip.FileHeader{
+		Name:           "main",
+		ExternalAttrs:  (0777 << 16), // File permissions
+		CreatorVersion: (3 << 8),     // Magic number indicating a Unix creator
 	}
 
+	log.Debug("Adding binary to zip archive")
 	writer, err := archive.CreateHeader(header)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	_, err = io.Copy(writer, binReader)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	binReader.Close()
@@ -132,11 +153,20 @@ func (l *LambdaClient) createFunction(functionName string, code []byte) error {
 		Handler:      aws.String("main"),
 		Runtime:      aws.String(lambda.RuntimeGo1X),
 		Role:         aws.String("arn:aws:iam::847166266056:role/flask-example-dev-ZappaLambdaExecutionRole"),
+		Timeout:      aws.Int64(300),
+		MemorySize:   aws.Int64(3000),
 	}
 
-	log.Debug("Creating Lambda function")
 	_, err := l.client.CreateFunction(createArgs)
 	return err
+}
+
+func (l *LambdaClient) getFunction(functionName string) (*lambda.GetFunctionOutput, error) {
+	getInput := &lambda.GetFunctionInput{
+		FunctionName: aws.String(functionName),
+	}
+
+	return l.client.GetFunction(getInput)
 }
 
 func (l *LambdaClient) Invoke(functionName string, payload []byte) ([]byte, error) {
@@ -144,6 +174,7 @@ func (l *LambdaClient) Invoke(functionName string, payload []byte) ([]byte, erro
 		FunctionName: aws.String(functionName),
 		Payload:      payload,
 	}
+
 	output, err := l.client.Invoke(invokeInput)
 	return output.Payload, err
 }

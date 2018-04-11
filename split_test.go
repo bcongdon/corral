@@ -24,8 +24,8 @@ func TestPackInputSplits(t *testing.T) {
 		splits := make([]inputSplit, len(test.splitSizes))
 		for i, size := range test.splitSizes {
 			splits[i] = inputSplit{
-				startOffset: 0,
-				endOffset:   int64(size) - 1,
+				StartOffset: 0,
+				EndOffset:   int64(size) - 1,
 			}
 		}
 
@@ -66,8 +66,8 @@ func TestCalculateInputSplits(t *testing.T) {
 
 		assert.Equal(t, len(test.expectedSplitStarts), len(splits), fmt.Sprintln(splits))
 		for i, split := range splits {
-			assert.Equal(t, test.expectedSplitStarts[i], split.startOffset)
-			assert.Equal(t, test.expectedSplitEnds[i], split.endOffset)
+			assert.Equal(t, test.expectedSplitStarts[i], split.StartOffset)
+			assert.Equal(t, test.expectedSplitEnds[i], split.EndOffset)
 		}
 	}
 }
@@ -85,8 +85,8 @@ func TestSplitSize(t *testing.T) {
 
 	for _, test := range splitSizeTests {
 		split := inputSplit{
-			startOffset: test.startOffset,
-			endOffset:   test.endOffset,
+			StartOffset: test.startOffset,
+			EndOffset:   test.endOffset,
 		}
 		assert.Equal(t, test.expectedSize, split.Size())
 	}

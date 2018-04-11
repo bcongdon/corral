@@ -52,7 +52,7 @@ type Option func(*config)
 func NewDriver(job *Job, options ...Option) *Driver {
 	d := &Driver{
 		job:      job,
-		executor: &lambdaExecutor{corlambda.NewLambdaClient(), "corral_test"},
+		executor: &lambdaExecutor{corlambda.NewLambdaClient(), "corral_test_function"},
 	}
 
 	c := newConfig()
@@ -153,5 +153,6 @@ func (d *Driver) run() {
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
+	log.SetLevel(log.DebugLevel)
 	d.run()
 }
