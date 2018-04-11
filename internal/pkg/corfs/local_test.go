@@ -25,7 +25,7 @@ func TestLocalListFiles(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.init(tmpdir)
+	fs.Init(tmpdir)
 
 	files, err := fs.ListFiles()
 	assert.Nil(t, err)
@@ -42,7 +42,7 @@ func TestLocalOpenReader(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo bar baz"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.init(tmpdir)
+	fs.Init(tmpdir)
 
 	// Test reader that begins at beginning of file
 	reader, err := fs.OpenReader("tmpfile", 0)
@@ -71,7 +71,7 @@ func TestLocalOpenWriter(t *testing.T) {
 	assert.Nil(t, err)
 
 	fs := LocalFilesystem{}
-	fs.init(tmpdir)
+	fs.Init(tmpdir)
 
 	writer, err := fs.OpenWriter("tmpfile")
 	assert.Nil(t, err)
@@ -93,7 +93,7 @@ func TestLocalStat(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.init(tmpdir)
+	fs.Init(tmpdir)
 
 	fInfo, err := fs.Stat("tmpfile")
 	assert.Nil(t, err)

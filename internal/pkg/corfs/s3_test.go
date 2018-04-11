@@ -17,7 +17,7 @@ func getS3TestBackend(t *testing.T) *S3Backend {
 	if bucket == "" {
 		t.Fatal("No test bucket is set under $AWS_TEST_BUCKET")
 	}
-	err := backend.init(bucket)
+	err := backend.Init(bucket)
 	if err != nil {
 		t.Skipf("Could not initialize S3 filesystem: %s", err)
 	}

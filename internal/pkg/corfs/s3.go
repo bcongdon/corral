@@ -66,7 +66,7 @@ func (s *S3Backend) Stat(filename string) (FileInfo, error) {
 	return FileInfo{}, errors.New("No file with given filename")
 }
 
-func (s *S3Backend) init(location string) error {
+func (s *S3Backend) Init(location string) error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	sess, err := session.NewSession()
 	if err != nil {
