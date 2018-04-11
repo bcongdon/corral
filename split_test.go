@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bcongdon/corral/internal/pkg/backend"
-
+	"github.com/bcongdon/corral/internal/pkg/corfs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -59,7 +58,7 @@ func TestCalculateInputSplits(t *testing.T) {
 	}
 
 	for _, test := range calculateSplitTests {
-		fInfo := backend.FileInfo{
+		fInfo := corfs.FileInfo{
 			Size: test.fileSize,
 		}
 

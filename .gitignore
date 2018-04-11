@@ -14,3 +14,5 @@
 .glide/
 
 vendor/
+word_count
+.vscode

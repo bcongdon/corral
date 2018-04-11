@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bcongdon/corral/internal/pkg/backend"
+	"github.com/bcongdon/corral/internal/pkg/corfs"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -53,12 +53,12 @@ func (e *reducerEmitter) close() error {
 type mapperEmitter struct {
 	numBins  uint                    // number of intermediate shuffle bins
 	writers  map[uint]io.WriteCloser // maps a parition number to an open writer
-	fs       *backend.FileSystem     // filesystem to use when opening writers
+	fs       *corfs.FileSystem       // filesystem to use when opening writers
 	mapperID uint                    // numeric identifier of the mapper using this emitter
 }
 
 // Initializes a new mapperEmitter
-func newMapperEmitter(numBins uint, mapperID uint, fs *backend.FileSystem) mapperEmitter {
+func newMapperEmitter(numBins uint, mapperID uint, fs *corfs.FileSystem) mapperEmitter {
 	return mapperEmitter{
 		numBins:  numBins,
 		writers:  make(map[uint]io.WriteCloser, numBins),

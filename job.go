@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bcongdon/corral/internal/pkg/backend"
+	"github.com/bcongdon/corral/internal/pkg/corfs"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,8 +16,8 @@ type Job struct {
 	Map    Mapper
 	Reduce Reducer
 
-	fileSystem       backend.FileSystem
-	config           *Config
+	fileSystem       corfs.FileSystem
+	config           *config
 	intermediateBins uint
 }
 
@@ -74,7 +74,7 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 // Logic for running a single reduce task
 func (j *Job) runReducer(binID uint) error {
 	// Determine the intermediate data files this reducer is responsible for
-	intermediateFiles := make([]backend.FileInfo, 0)
+	intermediateFiles := make([]corfs.FileInfo, 0)
 
 	files, err := j.fileSystem.ListFiles()
 	if err != nil {
@@ -157,7 +157,7 @@ func (j *Job) inputSplits(files []string, maxSplitSize int64) []inputSplit {
 		splits = append(splits, splitInputFile(fInfo, maxSplitSize)...)
 	}
 
-	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 0.75)
+	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 1.25)
 	if j.intermediateBins == 0 {
 		j.intermediateBins = 1
 	}

@@ -3,7 +3,7 @@ package corral
 import (
 	"bufio"
 
-	"github.com/bcongdon/corral/internal/pkg/backend"
+	"github.com/bcongdon/corral/internal/pkg/corfs"
 )
 
 // inputSplit contains the information about a contiguous chunk of an input file.
@@ -28,7 +28,7 @@ func min(a, b int64) int64 {
 	return b
 }
 
-func splitInputFile(file backend.FileInfo, maxSplitSize int64) []inputSplit {
+func splitInputFile(file corfs.FileInfo, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
 
 	for startOffset := int64(0); startOffset < file.Size; startOffset += maxSplitSize {
