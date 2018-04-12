@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,9 +26,8 @@ func TestLocalListFiles(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.Init(tmpdir)
 
-	files, err := fs.ListFiles()
+	files, err := fs.ListFiles(tmpdir)
 	assert.Nil(t, err)
 
 	assert.Len(t, files, 1)
@@ -42,10 +42,11 @@ func TestLocalOpenReader(t *testing.T) {
 	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo bar baz"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.Init(tmpdir)
+
+	path := filepath.Join(tmpdir, "tmpfile")
 
 	// Test reader that begins at beginning of file
-	reader, err := fs.OpenReader("tmpfile", 0)
+	reader, err := fs.OpenReader(path, 0)
 	assert.Nil(t, err)
 
 	contents, err := ioutil.ReadAll(reader)
@@ -55,7 +56,7 @@ func TestLocalOpenReader(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Test reader that begins in the middle of a file
-	reader, err = fs.OpenReader("tmpfile", 4)
+	reader, err = fs.OpenReader(path, 4)
 	assert.Nil(t, err)
 
 	contents, err = ioutil.ReadAll(reader)
@@ -71,16 +72,17 @@ func TestLocalOpenWriter(t *testing.T) {
 	assert.Nil(t, err)
 
 	fs := LocalFilesystem{}
-	fs.Init(tmpdir)
 
-	writer, err := fs.OpenWriter("tmpfile")
+	path := filepath.Join(tmpdir, "tmpfile")
+
+	writer, err := fs.OpenWriter(path)
 	assert.Nil(t, err)
 
 	n, err := writer.Write([]byte("foo bar baz"))
 	assert.Equal(t, 11, n)
 	assert.Nil(t, err)
 
-	contents, err := ioutil.ReadFile(path.Join(tmpdir, "tmpfile"))
+	contents, err := ioutil.ReadFile(path)
 	assert.Nil(t, err)
 	assert.Equal(t, []byte("foo bar baz"), contents)
 }
@@ -90,14 +92,15 @@ func TestLocalStat(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 	assert.Nil(t, err)
 
-	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo"), 0777)
+	path := path.Join(tmpdir, "tmpfile")
+
+	ioutil.WriteFile(path, []byte("foo"), 0777)
 
 	fs := LocalFilesystem{}
-	fs.Init(tmpdir)
 
-	fInfo, err := fs.Stat("tmpfile")
+	fInfo, err := fs.Stat(path)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "tmpfile", fInfo.Name)
+	assert.Equal(t, path, fInfo.Name)
 	assert.Equal(t, int64(3), fInfo.Size)
 }

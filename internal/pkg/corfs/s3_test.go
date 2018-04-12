@@ -10,25 +10,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getS3TestBackend(t *testing.T) *S3Backend {
+func getS3TestBackend(t *testing.T) (string, *S3Backend) {
 	backend := &S3Backend{}
 
 	bucket := os.Getenv("AWS_TEST_BUCKET")
 	if bucket == "" {
 		t.Fatal("No test bucket is set under $AWS_TEST_BUCKET")
 	}
-	err := backend.Init(bucket)
+	err := backend.Init()
 	if err != nil {
 		t.Skipf("Could not initialize S3 filesystem: %s", err)
 	}
-	return backend
+	return fmt.Sprintf("s3://%s", bucket), backend
 }
 
 func cleanup(backend *S3Backend, t *testing.T) {
-	objects, err := backend.ListFiles()
+	bucket := os.Getenv("AWS_TEST_BUCKET")
+	objects, err := backend.ListFiles("s3://" + bucket + "/")
+
 	assert.Nil(t, err)
 	for _, obj := range objects {
-		err = backend.bucket.Delete(obj.Name)
+		err = backend.Delete(obj.Name)
 		assert.Nil(t, err)
 	}
 }
@@ -42,11 +44,13 @@ func TestS3ImplementsFileSystem(t *testing.T) {
 }
 
 func TestS3ReaderWriter(t *testing.T) {
-	backend := getS3TestBackend(t)
+	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
 
+	path := bucket + "/testobj"
+
 	// Test writer
-	writer, err := backend.OpenWriter("testobj")
+	writer, err := backend.OpenWriter(path)
 	assert.Nil(t, err)
 
 	_, err = writer.Write([]byte("foo bar baz"))
@@ -56,7 +60,7 @@ func TestS3ReaderWriter(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Test reader starting at beginning of file
-	reader, err := backend.OpenReader("testobj", 0)
+	reader, err := backend.OpenReader(path, 0)
 	assert.Nil(t, err)
 
 	contents, err := ioutil.ReadAll(reader)
@@ -68,11 +72,13 @@ func TestS3ReaderWriter(t *testing.T) {
 }
 
 func TestS3ReaderWriterWithOffset(t *testing.T) {
-	backend := getS3TestBackend(t)
+	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
 
+	path := bucket + "/testobj"
+
 	// Test writer
-	writer, err := backend.OpenWriter("testobj")
+	writer, err := backend.OpenWriter(path)
 	assert.Nil(t, err)
 
 	_, err = writer.Write([]byte("foo bar baz"))
@@ -82,7 +88,7 @@ func TestS3ReaderWriterWithOffset(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Test reader starting in middle of file
-	reader, err := backend.OpenReader("testobj", 4)
+	reader, err := backend.OpenReader(path, 4)
 	assert.Nil(t, err)
 
 	contents, err := ioutil.ReadAll(reader)
@@ -94,12 +100,12 @@ func TestS3ReaderWriterWithOffset(t *testing.T) {
 }
 
 func TestS3ListFiles(t *testing.T) {
-	backend := getS3TestBackend(t)
+	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
 
 	for i := 0; i < 5; i++ {
 		fName := fmt.Sprintf("file%d", i)
-		writer, err := backend.OpenWriter(fName)
+		writer, err := backend.OpenWriter(bucket + "/" + fName)
 		assert.Nil(t, err)
 
 		_, err = writer.Write([]byte(fName))
@@ -108,21 +114,25 @@ func TestS3ListFiles(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	files, err := backend.ListFiles()
+	files, err := backend.ListFiles(bucket)
 	assert.Nil(t, err)
 	assert.Len(t, files, 5)
 
+	expectedPrefix := bucket + "/file"
 	for _, file := range files {
-		assert.True(t, strings.HasPrefix(file.Name, "file"))
+		fmt.Println(file.Name, expectedPrefix)
+		assert.True(t, strings.HasPrefix(file.Name, expectedPrefix))
 		assert.Equal(t, int64(5), file.Size)
 	}
 }
 
 func TestS3Stat(t *testing.T) {
-	backend := getS3TestBackend(t)
+	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
 
-	writer, err := backend.OpenWriter("testfile")
+	path := bucket + "/testobj"
+
+	writer, err := backend.OpenWriter(path)
 	assert.Nil(t, err)
 
 	_, err = writer.Write([]byte("foo bar baz"))
@@ -130,9 +140,9 @@ func TestS3Stat(t *testing.T) {
 	err = writer.Close()
 	assert.Nil(t, err)
 
-	file, err := backend.Stat("testfile")
+	file, err := backend.Stat(path)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "testfile", file.Name)
+	assert.Equal(t, path, file.Name)
 	assert.Equal(t, int64(11), file.Size)
 }

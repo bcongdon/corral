@@ -18,11 +18,11 @@ const (
 // is written to a file system.
 // This is abstracted to allow remote filesystems like S3 to be supported.
 type FileSystem interface {
-	ListFiles() ([]FileInfo, error)
-	Stat(filename string) (FileInfo, error)
-	OpenReader(filename string, startAt int64) (io.ReadCloser, error)
-	OpenWriter(filename string) (io.WriteCloser, error)
-	Init(location string) error
+	ListFiles(pathGlob string) ([]FileInfo, error)
+	Stat(filePath string) (FileInfo, error)
+	OpenReader(filePath string, startAt int64) (io.ReadCloser, error)
+	OpenWriter(filePath string) (io.WriteCloser, error)
+	Init() error
 }
 
 // FileInfo provides information about a file
@@ -42,6 +42,6 @@ func InitFilesystem(fsType FileSystemType, location string) FileSystem {
 		fs = &S3Backend{}
 	}
 
-	fs.Init(location)
+	fs.Init()
 	return fs
 }

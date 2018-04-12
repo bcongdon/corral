@@ -2,30 +2,67 @@ package corfs
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bcongdon/s3gof3r"
 )
 
-type S3Backend struct {
-	bucket *s3gof3r.Bucket
-	client *s3.S3
+var validS3Schemes = map[string]bool{
+	"s3":  true,
+	"s3a": true,
+	"s3n": true,
 }
 
-func (s *S3Backend) ListFiles() ([]FileInfo, error) {
+type S3Backend struct {
+	s3Client      *s3.S3
+	s3Gof3rClient *s3gof3r.S3
+}
+
+func parseS3URI(uri string) (*url.URL, error) {
+	parsed, err := url.Parse(uri)
+
+	if _, ok := validS3Schemes[parsed.Scheme]; !ok {
+		return nil, fmt.Errorf("Invalid s3 scheme: '%s'", parsed.Scheme)
+	}
+
+	// if !strings.Contains(parsed.Path, "/") {
+	// 	return nil, fmt.Errorf("Invalid s3 url: '%s'", uri)
+	// }
+
+	if strings.HasPrefix(parsed.Path, "/") {
+		parsed.Path = parsed.Path[1:]
+	}
+
+	return parsed, err
+}
+
+func (s *S3Backend) ListFiles(pathGlob string) ([]FileInfo, error) {
 	s3Files := make([]FileInfo, 0)
 
-	params := &s3.ListObjectsInput{
-		Bucket: &s.bucket.Name,
+	parsed, err := parseS3URI(pathGlob)
+	if err != nil {
+		return nil, err
 	}
-	err := s.client.ListObjectsPages(params,
+
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String(parsed.Hostname()),
+		Prefix: aws.String(parsed.Path),
+	}
+	fmt.Println(aws.String(parsed.Path))
+
+	objectPrefix := fmt.Sprintf("%s://%s/", parsed.Scheme, parsed.Hostname())
+	err = s.s3Client.ListObjectsPages(params,
 		func(page *s3.ListObjectsOutput, _ bool) bool {
 			for _, object := range page.Contents {
 				s3Files = append(s3Files, FileInfo{
-					Name: *object.Key,
+					Name: objectPrefix + *object.Key,
 					Size: *object.Size,
 				})
 			}
@@ -35,29 +72,51 @@ func (s *S3Backend) ListFiles() ([]FileInfo, error) {
 	return s3Files, err
 }
 
-func (s *S3Backend) OpenReader(filename string, startAt int64) (io.ReadCloser, error) {
-	reader, _, err := s.bucket.GetOffsetReader(filename, nil, startAt)
+func (s *S3Backend) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
+	parsed, err := parseS3URI(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
+
+	reader, _, err := bucket.GetOffsetReader(parsed.Path, nil, startAt)
 	return reader, err
 }
 
-func (s *S3Backend) OpenWriter(filename string) (io.WriteCloser, error) {
-	return s.bucket.PutWriter(filename, nil, nil)
+func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
+	parsed, err := parseS3URI(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
+
+	cfg := s3gof3r.DefaultConfig
+	cfg.Concurrency = 1
+	cfg.Md5Check = false
+	return bucket.PutWriter(parsed.Path, nil, cfg)
 }
 
-func (s *S3Backend) Stat(filename string) (FileInfo, error) {
-	params := &s3.ListObjectsInput{
-		Bucket: &s.bucket.Name,
-		Prefix: &filename,
+func (s *S3Backend) Stat(filePath string) (FileInfo, error) {
+	parsed, err := parseS3URI(filePath)
+	if err != nil {
+		return FileInfo{}, err
 	}
-	result, err := s.client.ListObjects(params)
+
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String(parsed.Hostname()),
+		Prefix: aws.String(parsed.Path),
+	}
+	result, err := s.s3Client.ListObjects(params)
 	if err != nil {
 		return FileInfo{}, err
 	}
 
 	for _, object := range result.Contents {
-		if *object.Key == filename {
+		if *object.Key == parsed.Path {
 			return FileInfo{
-				Name: *object.Key,
+				Name: filePath,
 				Size: *object.Size,
 			}, nil
 		}
@@ -66,26 +125,34 @@ func (s *S3Backend) Stat(filename string) (FileInfo, error) {
 	return FileInfo{}, errors.New("No file with given filename")
 }
 
-func (s *S3Backend) Init(location string) error {
+func (s *S3Backend) Init() error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	sess, err := session.NewSession()
 	if err != nil {
 		return err
 	}
-	s.client = s3.New(sess)
+	s.s3Client = s3.New(sess)
 
 	creds, err := sess.Config.Credentials.Get()
 	if err != nil {
 		return err
 	}
 
-	s3gof3rClient := s3gof3r.New("", s3gof3r.Keys{
+	s.s3Gof3rClient = s3gof3r.New("", s3gof3r.Keys{
 		AccessKey:     creds.AccessKeyID,
 		SecretKey:     creds.SecretAccessKey,
 		SecurityToken: creds.SessionToken,
 	})
 
-	s.bucket = s3gof3rClient.Bucket(location)
-	s.bucket.Md5Check = false
 	return nil
+}
+
+func (s *S3Backend) Delete(filePath string) error {
+	parsed, err := parseS3URI(filePath)
+	if err != nil {
+		return err
+	}
+
+	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
+	return bucket.Delete(parsed.Path)
 }

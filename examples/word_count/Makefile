@@ -1,7 +1,7 @@
 BUCKET = ${AWS_TEST_BUCKET}
 all: word_count
 
-word_count: word_count.go ../*.go
+word_count: word_count.go ../../*.go ../../internal/pkg/**/*.go
 	go build -o word_count word_count.go
 
 test_wc_local: word_count

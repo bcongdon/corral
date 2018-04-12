@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
@@ -74,16 +73,9 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 // Logic for running a single reduce task
 func (j *Job) runReducer(binID uint) error {
 	// Determine the intermediate data files this reducer is responsible for
-	intermediateFiles := make([]corfs.FileInfo, 0)
-
-	files, err := j.fileSystem.ListFiles()
+	files, err := j.fileSystem.ListFiles(fmt.Sprintf("./map-bin%d*", binID))
 	if err != nil {
 		return err
-	}
-	for _, file := range files {
-		if strings.Contains(file.Name, fmt.Sprintf("map-bin%d", binID)) {
-			intermediateFiles = append(intermediateFiles, file)
-		}
 	}
 
 	// Open emitter for output data
@@ -98,7 +90,7 @@ func (j *Job) runReducer(binID uint) error {
 	keyChannels := make(map[string](chan string))
 	var waitGroup sync.WaitGroup
 
-	for _, file := range intermediateFiles {
+	for _, file := range files {
 		reader, err := j.fileSystem.OpenReader(file.Name, 0)
 		if err != nil {
 			return err
@@ -143,10 +135,13 @@ func (j *Job) runReducer(binID uint) error {
 
 // inputSplits calculates all input files' inputSplits.
 // inputSplits also determines and saves the number of intermediate bins that will be used during the shuffle.
-func (j *Job) inputSplits(files []string, maxSplitSize int64) []inputSplit {
+func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
+
+	// files := make([]string, 0)
+
 	var totalSize int64
-	for _, inputFileName := range files {
+	for _, inputFileName := range inputs {
 		fInfo, err := j.fileSystem.Stat(inputFileName)
 		if err != nil {
 			log.Warnf("Unable to load input file: %s (%s)", inputFileName, err)

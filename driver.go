@@ -2,6 +2,7 @@ package corral
 
 import (
 	"flag"
+	"os"
 	"strings"
 	"sync"
 
@@ -15,9 +16,10 @@ import (
 
 // Driver controls the execution of a MapReduce Job
 type Driver struct {
-	job      *Job
-	config   *config
-	executor executor
+	job             *Job
+	config          *config
+	executor        executor
+	inputFilesystem corfs.FileSystem
 }
 
 // config configures a Driver's execution of jobs
@@ -32,11 +34,8 @@ type config struct {
 }
 
 func newConfig() *config {
-	if !flag.Parsed() {
-		flag.Parse()
-	}
 	return &config{
-		Inputs:             flag.Args(),
+		Inputs:             []string{},
 		SplitSize:          100 * 1024 * 1024, // Default input split size is 100Mb
 		MapBinSize:         500 * 1024 * 1024, // Default map bin size is 500Mb
 		ReduceBinSize:      500 * 1024 * 1024, // Default reduce bin size is 500Mb
@@ -52,7 +51,7 @@ type Option func(*config)
 func NewDriver(job *Job, options ...Option) *Driver {
 	d := &Driver{
 		job:      job,
-		executor: &lambdaExecutor{corlambda.NewLambdaClient(), "corral_test_function"},
+		executor: localExecutor{},
 	}
 
 	c := newConfig()
@@ -77,21 +76,21 @@ func WithSplitSize(s int64) Option {
 	}
 }
 
-// WithSplitSize sets the MapBinSize of the Driver
+// WithMapBinSize sets the MapBinSize of the Driver
 func WithMapBinSize(s int64) Option {
 	return func(c *config) {
 		c.MapBinSize = s
 	}
 }
 
-// WithSplitSize sets the ReduceBinSize of the Driver
+// WithReduceBinSize sets the ReduceBinSize of the Driver
 func WithReduceBinSize(s int64) Option {
 	return func(c *config) {
 		c.ReduceBinSize = s
 	}
 }
 
-// WithSplitSize sets the location and filesystem backend of the Driver
+// WithWorkingLocation sets the location and filesystem backend of the Driver
 func WithWorkingLocation(location string) Option {
 	return func(c *config) {
 		if strings.HasPrefix(location, "s3://") {
@@ -100,6 +99,50 @@ func WithWorkingLocation(location string) Option {
 		}
 		c.FileSystemLocation = location
 	}
+}
+
+func (d *Driver) runMapPhase() {
+	var wg sync.WaitGroup
+	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
+	if len(inputSplits) == 0 {
+		log.Warnf("No input splits")
+		os.Exit(0)
+	}
+	log.Debugf("Calculated %d inputsplits", len(inputSplits))
+
+	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
+	bar := pb.New(len(inputBins)).Prefix("Map").Start()
+	for binID, bin := range inputBins {
+		wg.Add(1)
+		go func(bID uint, b []inputSplit) {
+			defer wg.Done()
+			defer bar.Increment()
+			err := d.executor.RunMapper(d.job, bID, b)
+			if err != nil {
+				log.Errorf("Error when running mapper %d: %s", bID, err)
+			}
+		}(uint(binID), bin)
+	}
+	wg.Wait()
+	bar.Finish()
+}
+
+func (d *Driver) runReducePhase() {
+	var wg sync.WaitGroup
+	bar := pb.New(int(d.job.intermediateBins)).Prefix("Reduce").Start()
+	for binID := uint(0); binID < d.job.intermediateBins; binID++ {
+		wg.Add(1)
+		go func(bID uint) {
+			defer wg.Done()
+			defer bar.Increment()
+			err := d.executor.RunReducer(d.job, bID)
+			if err != nil {
+				log.Errorf("Error when running reducer %d: %s", bID, err)
+			}
+		}(binID)
+	}
+	wg.Wait()
+	bar.Finish()
 }
 
 // run starts the Driver
@@ -113,46 +156,35 @@ func (d *Driver) run() {
 		lBackend.Deploy()
 	}
 
+	log.Debugf("Initializing job filesystem")
 	d.job.fileSystem = corfs.InitFilesystem(d.config.FileSystemType, d.config.FileSystemLocation)
 	d.job.config = d.config
 
-	var wg sync.WaitGroup
-	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
-	if len(inputSplits) == 0 {
-		log.Warnf("No input splits")
+	d.runMapPhase()
+	d.runReducePhase()
+}
+
+func (d *Driver) initInputFilesystem() {
+	if len(d.config.Inputs) == 0 {
 		return
 	}
-
-	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
-	bar := pb.New(len(inputBins)).Prefix("Map").Start()
-	for binID, bin := range inputBins {
-		wg.Add(1)
-		go func(bID uint, b []inputSplit) {
-			defer wg.Done()
-			defer bar.Increment()
-			d.executor.RunMapper(d.job, bID, b)
-		}(uint(binID), bin)
-	}
-	wg.Wait()
-	bar.Finish()
-
-	// Reducer Phase
-	bar = pb.New(int(d.job.intermediateBins)).Prefix("Reduce").Start()
-	for binID := uint(0); binID < d.job.intermediateBins; binID++ {
-		wg.Add(1)
-		go func(bID uint) {
-			defer wg.Done()
-			defer bar.Increment()
-			d.executor.RunReducer(d.job, bID)
-		}(binID)
-	}
-	wg.Wait()
-	bar.Finish()
 }
 
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
 	log.SetLevel(log.DebugLevel)
+
+	lambda := flag.Bool("lambda", false, "Use lambda backend")
+	flag.Parse()
+
+	d.config.Inputs = flag.Args()
+	if *lambda {
+		d.executor = &lambdaExecutor{
+			corlambda.NewLambdaClient(),
+			"corral_test_function",
+		}
+	}
+
 	d.run()
 }

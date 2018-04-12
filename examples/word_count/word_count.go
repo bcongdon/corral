@@ -21,7 +21,10 @@ func (w wordCount) Map(key, value string, emitter corral.Emitter) {
 		if len(word) == 0 {
 			continue
 		}
-		emitter.Emit(word, strconv.Itoa(1))
+		err := emitter.Emit(word, strconv.Itoa(1))
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -37,8 +40,8 @@ func main() {
 	job := corral.NewJob(wordCount{}, wordCount{})
 
 	options := []corral.Option{
-		corral.WithSplitSize(1 * 1024),
-		corral.WithMapBinSize(1 * 1024),
+		corral.WithSplitSize(10 * 1024),
+		corral.WithMapBinSize(10 * 1024),
 	}
 
 	useS3 := flag.Bool("s3", false, "use s3 as the backend")

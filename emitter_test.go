@@ -77,7 +77,7 @@ type mockFs struct {
 	writers map[string]*testWriteCloser
 }
 
-func (m *mockFs) ListFiles() ([]corfs.FileInfo, error) {
+func (m *mockFs) ListFiles(string) ([]corfs.FileInfo, error) {
 	return []corfs.FileInfo{}, nil
 }
 
@@ -97,7 +97,7 @@ func (m *mockFs) Stat(filePath string) (corfs.FileInfo, error) {
 	return corfs.FileInfo{filePath, 0}, nil
 }
 
-func (m *mockFs) Init(s string) error { return nil }
+func (m *mockFs) Init() error { return nil }
 
 func TestMapperEmitter(t *testing.T) {
 	mFs := &mockFs{writers: make(map[string]*testWriteCloser)}
