@@ -15,10 +15,10 @@ const (
 // in a MapReduce job, as well as the necessary information for a
 // remote executor to initialize itself and begin working.
 type task struct {
-	Phase              Phase
-	BinID              uint
-	IntermediateBins   uint
-	Splits             []inputSplit
-	FileSystemType     corfs.FileSystemType
-	FileSystemLocation string
+	Phase            Phase
+	BinID            uint
+	IntermediateBins uint
+	Splits           []inputSplit
+	FileSystemType   corfs.FileSystemType
+	WorkingLocation  string
 }

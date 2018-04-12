@@ -2,6 +2,7 @@ package corfs
 
 import (
 	"io"
+	"strings"
 )
 
 // FileSystemType is an identifier for supported FileSystems
@@ -22,6 +23,7 @@ type FileSystem interface {
 	Stat(filePath string) (FileInfo, error)
 	OpenReader(filePath string, startAt int64) (io.ReadCloser, error)
 	OpenWriter(filePath string) (io.WriteCloser, error)
+	Join(elem ...string) string
 	Init() error
 }
 
@@ -31,15 +33,26 @@ type FileInfo struct {
 	Size int64  // file size in bytes
 }
 
-// InitFilesystem intializes a filesystem of the given type relative to
-// the specified location.
-func InitFilesystem(fsType FileSystemType, location string) FileSystem {
+// InitFilesystem intializes a filesystem of the given type
+func InitFilesystem(fsType FileSystemType) FileSystem {
 	var fs FileSystem
 	switch fsType {
 	case Local:
 		fs = &LocalFilesystem{}
 	case S3:
 		fs = &S3Backend{}
+	}
+
+	fs.Init()
+	return fs
+}
+
+func InferFilesystem(location string) FileSystem {
+	var fs FileSystem
+	if strings.HasPrefix(location, "s3://") {
+		fs = &S3Backend{}
+	} else {
+		fs = &LocalFilesystem{}
 	}
 
 	fs.Init()

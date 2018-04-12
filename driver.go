@@ -3,7 +3,6 @@ package corral
 import (
 	"flag"
 	"os"
-	"strings"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -16,32 +15,29 @@ import (
 
 // Driver controls the execution of a MapReduce Job
 type Driver struct {
-	job             *Job
-	config          *config
-	executor        executor
-	inputFilesystem corfs.FileSystem
+	job      *Job
+	config   *config
+	executor executor
 }
 
 // config configures a Driver's execution of jobs
 type config struct {
-	Inputs             []string
-	SplitSize          int64
-	MapBinSize         int64
-	ReduceBinSize      int64
-	MaxConcurrency     int
-	FileSystemType     corfs.FileSystemType
-	FileSystemLocation string
+	Inputs          []string
+	SplitSize       int64
+	MapBinSize      int64
+	ReduceBinSize   int64
+	MaxConcurrency  int
+	WorkingLocation string
 }
 
 func newConfig() *config {
 	return &config{
-		Inputs:             []string{},
-		SplitSize:          100 * 1024 * 1024, // Default input split size is 100Mb
-		MapBinSize:         500 * 1024 * 1024, // Default map bin size is 500Mb
-		ReduceBinSize:      500 * 1024 * 1024, // Default reduce bin size is 500Mb
-		MaxConcurrency:     100,               // TODO: Not currently enforced
-		FileSystemType:     corfs.Local,
-		FileSystemLocation: ".",
+		Inputs:          []string{},
+		SplitSize:       100 * 1024 * 1024, // Default input split size is 100Mb
+		MapBinSize:      500 * 1024 * 1024, // Default map bin size is 500Mb
+		ReduceBinSize:   500 * 1024 * 1024, // Default reduce bin size is 500Mb
+		MaxConcurrency:  100,               // TODO: Not currently enforced
+		WorkingLocation: ".",
 	}
 }
 
@@ -93,15 +89,14 @@ func WithReduceBinSize(s int64) Option {
 // WithWorkingLocation sets the location and filesystem backend of the Driver
 func WithWorkingLocation(location string) Option {
 	return func(c *config) {
-		if strings.HasPrefix(location, "s3://") {
-			c.FileSystemType = corfs.S3
-			location = strings.TrimPrefix(location, "s3://")
-		}
-		c.FileSystemLocation = location
+		c.WorkingLocation = location
 	}
 }
 
 func (d *Driver) runMapPhase() {
+	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
+	d.job.outputPath = d.config.WorkingLocation
+
 	var wg sync.WaitGroup
 	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
@@ -128,6 +123,9 @@ func (d *Driver) runMapPhase() {
 }
 
 func (d *Driver) runReducePhase() {
+	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
+	d.job.outputPath = d.config.WorkingLocation
+
 	var wg sync.WaitGroup
 	bar := pb.New(int(d.job.intermediateBins)).Prefix("Reduce").Start()
 	for binID := uint(0); binID < d.job.intermediateBins; binID++ {
@@ -147,6 +145,9 @@ func (d *Driver) runReducePhase() {
 
 // run starts the Driver
 func (d *Driver) run() {
+	d.job.config = d.config
+	d.job.outputPath = d.config.WorkingLocation
+
 	if runningInLambda() {
 		currentJob = d.job
 		lambda.Start(handleRequest)
@@ -156,18 +157,13 @@ func (d *Driver) run() {
 		lBackend.Deploy()
 	}
 
-	log.Debugf("Initializing job filesystem")
-	d.job.fileSystem = corfs.InitFilesystem(d.config.FileSystemType, d.config.FileSystemLocation)
-	d.job.config = d.config
+	if len(d.config.Inputs) == 0 {
+		log.Error("No inputs!")
+		os.Exit(1)
+	}
 
 	d.runMapPhase()
 	d.runReducePhase()
-}
-
-func (d *Driver) initInputFilesystem() {
-	if len(d.config.Inputs) == 0 {
-		return
-	}
 }
 
 // Main starts the Driver.

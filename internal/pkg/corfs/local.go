@@ -83,3 +83,7 @@ func (l *LocalFilesystem) Stat(filePath string) (FileInfo, error) {
 func (l *LocalFilesystem) Init() error {
 	return nil
 }
+
+func (l *LocalFilesystem) Join(elem ...string) string {
+	return filepath.Join(elem...)
+}

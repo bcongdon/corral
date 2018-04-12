@@ -18,11 +18,12 @@ type Job struct {
 	fileSystem       corfs.FileSystem
 	config           *config
 	intermediateBins uint
+	outputPath       string
 }
 
 // Logic for running a single map task
 func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
-	emitter := newMapperEmitter(j.intermediateBins, mapperID, &j.fileSystem)
+	emitter := newMapperEmitter(j.intermediateBins, mapperID, j.outputPath, j.fileSystem)
 	defer emitter.close()
 
 	for _, split := range splits {
@@ -73,13 +74,15 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 // Logic for running a single reduce task
 func (j *Job) runReducer(binID uint) error {
 	// Determine the intermediate data files this reducer is responsible for
-	files, err := j.fileSystem.ListFiles(fmt.Sprintf("./map-bin%d*", binID))
+	path := j.fileSystem.Join(j.outputPath, fmt.Sprintf("map-bin%d*", binID))
+	files, err := j.fileSystem.ListFiles(path)
 	if err != nil {
 		return err
 	}
 
 	// Open emitter for output data
-	emitWriter, err := j.fileSystem.OpenWriter(fmt.Sprintf("output-part-%d", binID))
+	path = j.fileSystem.Join(j.outputPath, fmt.Sprintf("output-part-%d", binID))
+	emitWriter, err := j.fileSystem.OpenWriter(path)
 	defer emitWriter.Close()
 	if err != nil {
 		return err
@@ -137,8 +140,6 @@ func (j *Job) runReducer(binID uint) error {
 // inputSplits also determines and saves the number of intermediate bins that will be used during the shuffle.
 func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
-
-	// files := make([]string, 0)
 
 	var totalSize int64
 	for _, inputFileName := range inputs {

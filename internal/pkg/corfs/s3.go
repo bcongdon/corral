@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,6 +21,8 @@ var validS3Schemes = map[string]bool{
 	"s3a": true,
 	"s3n": true,
 }
+
+var globRegex = regexp.MustCompile(`^(.*?)([\[\*\?].*)$`)
 
 type S3Backend struct {
 	s3Client      *s3.S3
@@ -51,18 +55,37 @@ func (s *S3Backend) ListFiles(pathGlob string) ([]FileInfo, error) {
 		return nil, err
 	}
 
+	baseURI := parsed.Path
+	if globRegex.MatchString(parsed.Path) {
+		baseURI = globRegex.FindStringSubmatch(parsed.Path)[1]
+	}
+
+	var dirGlob string
+	if !strings.HasSuffix(pathGlob, "/") {
+		dirGlob = pathGlob + "/*"
+	} else {
+		dirGlob = pathGlob + "*"
+	}
+
 	params := &s3.ListObjectsInput{
 		Bucket: aws.String(parsed.Hostname()),
-		Prefix: aws.String(parsed.Path),
+		Prefix: aws.String(baseURI),
 	}
-	fmt.Println(aws.String(parsed.Path))
 
 	objectPrefix := fmt.Sprintf("%s://%s/", parsed.Scheme, parsed.Hostname())
 	err = s.s3Client.ListObjectsPages(params,
 		func(page *s3.ListObjectsOutput, _ bool) bool {
 			for _, object := range page.Contents {
+				fullPath := objectPrefix + *object.Key
+
+				dirMatch, _ := filepath.Match(dirGlob, fullPath)
+				pathMatch, _ := filepath.Match(pathGlob, fullPath)
+				if !(dirMatch || pathMatch) {
+					continue
+				}
+
 				s3Files = append(s3Files, FileInfo{
-					Name: objectPrefix + *object.Key,
+					Name: fullPath,
 					Size: *object.Size,
 				})
 			}
@@ -155,4 +178,18 @@ func (s *S3Backend) Delete(filePath string) error {
 
 	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
 	return bucket.Delete(parsed.Path)
+}
+
+func (s *S3Backend) Join(elem ...string) string {
+	stripped := make([]string, len(elem))
+	for i, str := range elem {
+		if strings.HasPrefix(str, "/") {
+			str = str[1:]
+		}
+		if strings.HasSuffix(str, "/") && i != len(elem)-1 {
+			str = str[:len(str)-1]
+		}
+		stripped[i] = str
+	}
+	return strings.Join(stripped, "/")
 }

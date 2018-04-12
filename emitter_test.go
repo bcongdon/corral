@@ -24,7 +24,7 @@ func (t *testWriteCloser) Close() error {
 
 func TestKeyToBin(t *testing.T) {
 	for i := uint(0); i < 100; i++ {
-		me := newMapperEmitter(100, i, nil)
+		me := newMapperEmitter(100, i, "", nil)
 		bin := me.keyToBin("foo")
 		assert.Equal(t, bin, uint(0x63))
 	}
@@ -99,10 +99,12 @@ func (m *mockFs) Stat(filePath string) (corfs.FileInfo, error) {
 
 func (m *mockFs) Init() error { return nil }
 
+func (m *mockFs) Join(e ...string) string { return strings.Join(e, "/") }
+
 func TestMapperEmitter(t *testing.T) {
 	mFs := &mockFs{writers: make(map[string]*testWriteCloser)}
 	var fs corfs.FileSystem = mFs
-	emitter := newMapperEmitter(3, 0, &fs)
+	emitter := newMapperEmitter(3, 0, "out", fs)
 
 	err := emitter.Emit("key1", "val1")
 	assert.Nil(t, err)
@@ -115,9 +117,9 @@ func TestMapperEmitter(t *testing.T) {
 
 	assert.Len(t, mFs.writers, 3)
 
-	assert.Equal(t, `{"key":"key123","value":"val2"}`+"\n", string(mFs.writers["map-bin0-0.out"].Bytes()))
-	assert.Equal(t, `{"key":"key359","value":"val3"}`+"\n", string(mFs.writers["map-bin1-0.out"].Bytes()))
-	assert.Equal(t, `{"key":"key1","value":"val1"}`+"\n", string(mFs.writers["map-bin2-0.out"].Bytes()))
+	assert.Equal(t, `{"key":"key123","value":"val2"}`+"\n", string(mFs.writers["out/map-bin0-0.out"].Bytes()))
+	assert.Equal(t, `{"key":"key359","value":"val3"}`+"\n", string(mFs.writers["out/map-bin1-0.out"].Bytes()))
+	assert.Equal(t, `{"key":"key1","value":"val1"}`+"\n", string(mFs.writers["out/map-bin2-0.out"].Bytes()))
 
 	assert.Nil(t, emitter.close())
 }

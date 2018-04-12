@@ -126,6 +126,33 @@ func TestS3ListFiles(t *testing.T) {
 	}
 }
 
+func TestS3ListGlob(t *testing.T) {
+	bucket, backend := getS3TestBackend(t)
+	defer cleanup(backend, t)
+
+	for i := 0; i < 3; i++ {
+		fName := fmt.Sprintf("foo/file%d", i)
+		writer, err := backend.OpenWriter(bucket + "/" + fName)
+		assert.Nil(t, err)
+
+		_, err = writer.Write([]byte(fName))
+		assert.Nil(t, err)
+		err = writer.Close()
+		assert.Nil(t, err)
+	}
+
+	files, err := backend.ListFiles(bucket + "/foo/*")
+	assert.Nil(t, err)
+	assert.Len(t, files, 3)
+
+	expectedPrefix := bucket + "/foo/file"
+	for _, file := range files {
+		fmt.Println(file.Name, expectedPrefix)
+		assert.True(t, strings.HasPrefix(file.Name, expectedPrefix))
+		assert.Equal(t, int64(9), file.Size)
+	}
+}
+
 func TestS3Stat(t *testing.T) {
 	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
@@ -145,4 +172,14 @@ func TestS3Stat(t *testing.T) {
 
 	assert.Equal(t, path, file.Name)
 	assert.Equal(t, int64(11), file.Size)
+}
+
+func TestS3Join(t *testing.T) {
+	_, backend := getS3TestBackend(t)
+
+	res := backend.Join("s3://foo", "bar", "baz")
+	assert.Equal(t, res, "s3://foo/bar/baz")
+
+	res = backend.Join("s3://foo/", "/bar", "baz/")
+	assert.Equal(t, res, "s3://foo/bar/baz/")
 }

@@ -53,17 +53,19 @@ func (e *reducerEmitter) close() error {
 type mapperEmitter struct {
 	numBins  uint                    // number of intermediate shuffle bins
 	writers  map[uint]io.WriteCloser // maps a parition number to an open writer
-	fs       *corfs.FileSystem       // filesystem to use when opening writers
+	fs       corfs.FileSystem        // filesystem to use when opening writers
 	mapperID uint                    // numeric identifier of the mapper using this emitter
+	outDir   string                  // folder to save map output to
 }
 
 // Initializes a new mapperEmitter
-func newMapperEmitter(numBins uint, mapperID uint, fs *corfs.FileSystem) mapperEmitter {
+func newMapperEmitter(numBins uint, mapperID uint, outDir string, fs corfs.FileSystem) mapperEmitter {
 	return mapperEmitter{
 		numBins:  numBins,
 		writers:  make(map[uint]io.WriteCloser, numBins),
 		fs:       fs,
 		mapperID: mapperID,
+		outDir:   outDir,
 	}
 }
 
@@ -82,7 +84,9 @@ func (me *mapperEmitter) Emit(key, value string) error {
 	writer, exists := me.writers[bin]
 	if !exists {
 		var err error
-		writer, err = (*me.fs).OpenWriter(fmt.Sprintf("map-bin%d-%d.out", bin, me.mapperID))
+		path := me.fs.Join(me.outDir, fmt.Sprintf("map-bin%d-%d.out", bin, me.mapperID))
+
+		writer, err = me.fs.OpenWriter(path)
 		if err != nil {
 			return err
 		}

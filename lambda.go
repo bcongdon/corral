@@ -26,7 +26,7 @@ func runningInLambda() bool {
 }
 
 func handleRequest(ctx context.Context, task task) (string, error) {
-	fs := corfs.InitFilesystem(task.FileSystemType, task.FileSystemLocation)
+	fs := corfs.InitFilesystem(task.FileSystemType)
 	currentJob.fileSystem = fs
 	currentJob.intermediateBins = task.IntermediateBins
 
@@ -47,12 +47,12 @@ type lambdaExecutor struct {
 
 func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSplit) error {
 	mapTask := task{
-		Phase:              MapPhase,
-		BinID:              binID,
-		Splits:             inputSplits,
-		IntermediateBins:   job.intermediateBins,
-		FileSystemType:     corfs.S3,
-		FileSystemLocation: job.config.FileSystemLocation,
+		Phase:            MapPhase,
+		BinID:            binID,
+		Splits:           inputSplits,
+		IntermediateBins: job.intermediateBins,
+		FileSystemType:   corfs.S3,
+		WorkingLocation:  job.config.WorkingLocation,
 	}
 	payload, err := json.Marshal(mapTask)
 	if err != nil {
@@ -65,10 +65,10 @@ func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSpli
 
 func (l *lambdaExecutor) RunReducer(job *Job, binID uint) error {
 	mapTask := task{
-		Phase:              ReducePhase,
-		BinID:              binID,
-		FileSystemType:     corfs.S3,
-		FileSystemLocation: job.config.FileSystemLocation,
+		Phase:           ReducePhase,
+		BinID:           binID,
+		FileSystemType:  corfs.S3,
+		WorkingLocation: job.config.WorkingLocation,
 	}
 	payload, err := json.Marshal(mapTask)
 	if err != nil {
