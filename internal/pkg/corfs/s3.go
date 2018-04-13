@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bcongdon/s3gof3r"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var validS3Schemes = map[string]bool{
@@ -27,6 +28,7 @@ var globRegex = regexp.MustCompile(`^(.*?)([\[\*\?].*)$`)
 type S3Backend struct {
 	s3Client      *s3.S3
 	s3Gof3rClient *s3gof3r.S3
+	objectCache   *lru.Cache
 }
 
 func parseS3URI(uri string) (*url.URL, error) {
@@ -88,6 +90,7 @@ func (s *S3Backend) ListFiles(pathGlob string) ([]FileInfo, error) {
 					Name: fullPath,
 					Size: *object.Size,
 				})
+				s.objectCache.Add(fullPath, object)
 			}
 			return true
 		})
@@ -122,6 +125,13 @@ func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
 }
 
 func (s *S3Backend) Stat(filePath string) (FileInfo, error) {
+	if object, exists := s.objectCache.Get(filePath); exists {
+		return FileInfo{
+			Name: filePath,
+			Size: *object.(*s3.Object).Size,
+		}, nil
+	}
+
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
 		return FileInfo{}, err
@@ -138,6 +148,7 @@ func (s *S3Backend) Stat(filePath string) (FileInfo, error) {
 
 	for _, object := range result.Contents {
 		if *object.Key == parsed.Path {
+			s.objectCache.Add(filePath, object)
 			return FileInfo{
 				Name: filePath,
 				Size: *object.Size,
@@ -166,6 +177,8 @@ func (s *S3Backend) Init() error {
 		SecretKey:     creds.SecretAccessKey,
 		SecurityToken: creds.SessionToken,
 	})
+
+	s.objectCache, _ = lru.New(10000)
 
 	return nil
 }
