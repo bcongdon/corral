@@ -29,6 +29,7 @@ func handleRequest(ctx context.Context, task task) (string, error) {
 	fs := corfs.InitFilesystem(task.FileSystemType)
 	currentJob.fileSystem = fs
 	currentJob.intermediateBins = task.IntermediateBins
+	currentJob.outputPath = task.WorkingLocation
 
 	if task.Phase == MapPhase {
 		err := currentJob.runMapper(task.BinID, task.Splits)

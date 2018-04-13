@@ -35,7 +35,7 @@ func functionNeedsUpdate(functionCode []byte, cfg *lambda.FunctionConfiguration)
 	codeHash := sha256.New()
 	codeHash.Write(functionCode)
 	codeHashDigest := base64.StdEncoding.EncodeToString(codeHash.Sum(nil))
-	return codeHashDigest == *cfg.CodeSha256
+	return codeHashDigest != *cfg.CodeSha256
 }
 
 func (l *LambdaClient) DeployFunction(functionName string) error {
@@ -176,5 +176,10 @@ func (l *LambdaClient) Invoke(functionName string, payload []byte) ([]byte, erro
 	}
 
 	output, err := l.client.Invoke(invokeInput)
+	if err != nil {
+		return nil, err
+	} else if *output.StatusCode != 200 {
+		return output.Payload, fmt.Errorf("Non-200 Response code %d: %s", *output.StatusCode, *output.FunctionError)
+	}
 	return output.Payload, err
 }

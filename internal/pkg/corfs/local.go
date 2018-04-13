@@ -45,7 +45,7 @@ func (l *LocalFilesystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 		}
 		if !fInfo.IsDir() {
 			files = append(files, FileInfo{
-				Name: fInfo.Name(),
+				Name: fileName,
 				Size: fInfo.Size(),
 			})
 		} else {

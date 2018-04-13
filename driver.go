@@ -41,6 +41,7 @@ func newConfig() *config {
 	}
 }
 
+// Option allows configuration of a Driver
 type Option func(*config)
 
 // NewDriver creates a new Driver with the provided job and optional configuration
@@ -166,20 +167,24 @@ func (d *Driver) run() {
 	d.runReducePhase()
 }
 
+var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
+var outputDir = flag.String("out", "", "Output directory (can be local or in S3)")
+
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
 	log.SetLevel(log.DebugLevel)
-
-	lambda := flag.Bool("lambda", false, "Use lambda backend")
 	flag.Parse()
 
 	d.config.Inputs = flag.Args()
-	if *lambda {
+	if *lambdaFlag {
 		d.executor = &lambdaExecutor{
 			corlambda.NewLambdaClient(),
 			"corral_test_function",
 		}
+	}
+	if *outputDir != "" {
+		d.config.WorkingLocation = *outputDir
 	}
 
 	d.run()

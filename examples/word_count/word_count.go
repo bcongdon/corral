@@ -1,9 +1,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,14 +40,6 @@ func main() {
 	options := []corral.Option{
 		corral.WithSplitSize(10 * 1024),
 		corral.WithMapBinSize(10 * 1024),
-	}
-
-	useS3 := flag.Bool("s3", false, "use s3 as the backend")
-	flag.Parse()
-
-	if *useS3 {
-		bucket := os.Getenv("AWS_TEST_BUCKET")
-		options = append(options, corral.WithWorkingLocation(fmt.Sprintf("s3://%s", bucket)))
 	}
 
 	driver := corral.NewDriver(job, options...)

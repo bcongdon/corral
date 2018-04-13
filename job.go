@@ -141,8 +141,21 @@ func (j *Job) runReducer(binID uint) error {
 func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 	splits := make([]inputSplit, 0)
 
+	files := make([]string, 0)
+	for _, inputPath := range inputs {
+		fileInfos, err := j.fileSystem.ListFiles(inputPath)
+		if err != nil {
+			log.Warn(err)
+			continue
+		}
+
+		for _, fInfo := range fileInfos {
+			files = append(files, fInfo.Name)
+		}
+	}
+
 	var totalSize int64
-	for _, inputFileName := range inputs {
+	for _, inputFileName := range files {
 		fInfo, err := j.fileSystem.Stat(inputFileName)
 		if err != nil {
 			log.Warnf("Unable to load input file: %s (%s)", inputFileName, err)
