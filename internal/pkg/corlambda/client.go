@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,11 +13,14 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	lambdaMessages "github.com/aws/aws-lambda-go/lambda/messages"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	log "github.com/sirupsen/logrus"
 )
+
+const MAX_LAMBDA_RETRIES = 5
 
 type LambdaClient struct {
 	client *lambda.Lambda
@@ -169,7 +173,12 @@ func (l *LambdaClient) getFunction(functionName string) (*lambda.GetFunctionOutp
 	return l.client.GetFunction(getInput)
 }
 
-func (l *LambdaClient) Invoke(functionName string, payload []byte) ([]byte, error) {
+type invokeError struct {
+	Message    string                                           `json:"errorMessage"`
+	StackTrace []lambdaMessages.InvokeResponse_Error_StackFrame `json:"stackTrace"`
+}
+
+func (l *LambdaClient) tryInvoke(functionName string, payload []byte) ([]byte, error) {
 	invokeInput := &lambda.InvokeInput{
 		FunctionName: aws.String(functionName),
 		Payload:      payload,
@@ -178,8 +187,30 @@ func (l *LambdaClient) Invoke(functionName string, payload []byte) ([]byte, erro
 	output, err := l.client.Invoke(invokeInput)
 	if err != nil {
 		return nil, err
-	} else if *output.StatusCode != 200 {
-		return output.Payload, fmt.Errorf("Non-200 Response code %d: %s", *output.StatusCode, *output.FunctionError)
+	} else if output.FunctionError != nil {
+		var errPayload invokeError
+		err = json.Unmarshal(output.Payload, &errPayload)
+		if err != nil {
+			log.Debug(output.Payload)
+			return nil, err
+		}
+
+		log.Debug("Function invocation error. Stack trace:")
+		for _, frame := range errPayload.StackTrace {
+			log.Debugf("\t%s\t%s:%d", frame.Label, frame.Path, frame.Line)
+		}
+
+		return output.Payload, fmt.Errorf("Function error: %s", errPayload.Message)
 	}
 	return output.Payload, err
+}
+
+func (l *LambdaClient) Invoke(functionName string, payload []byte) (outputPayload []byte, err error) {
+	for try := 0; try < MAX_LAMBDA_RETRIES; try++ {
+		outputPayload, err = l.tryInvoke(functionName, payload)
+		if err == nil {
+			break
+		}
+	}
+	return outputPayload, err
 }

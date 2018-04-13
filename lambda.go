@@ -81,5 +81,5 @@ func (l *lambdaExecutor) RunReducer(job *Job, binID uint) error {
 }
 
 func (l *lambdaExecutor) Deploy() {
-	l.DeployFunction("corral_test_function")
+	l.DeployFunction(l.functionName)
 }

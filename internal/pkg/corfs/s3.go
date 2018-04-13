@@ -106,7 +106,11 @@ func (s *S3Backend) OpenReader(filePath string, startAt int64) (io.ReadCloser, e
 
 	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
 
-	reader, _, err := bucket.GetOffsetReader(parsed.Path, nil, startAt)
+	cfg := &s3gof3r.Config{}
+	*cfg = *s3gof3r.DefaultConfig
+	cfg.Concurrency = 1
+	cfg.Md5Check = false
+	reader, _, err := bucket.GetOffsetReader(parsed.Path, cfg, startAt)
 	return reader, err
 }
 
@@ -118,9 +122,11 @@ func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
 
 	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
 
-	cfg := s3gof3r.DefaultConfig
+	cfg := &s3gof3r.Config{}
+	*cfg = *s3gof3r.DefaultConfig
 	cfg.Concurrency = 1
 	cfg.Md5Check = false
+	cfg.PartSize = 0
 	return bucket.PutWriter(parsed.Path, nil, cfg)
 }
 

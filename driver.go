@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"sync"
 	"time"
 
@@ -159,6 +161,7 @@ func (d *Driver) run() {
 
 	if runningInLambda() {
 		currentJob = d.job
+
 		lambda.Start(handleRequest)
 	}
 
@@ -177,6 +180,7 @@ func (d *Driver) run() {
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
 var outputDir = flag.String("out", "", "Output directory (can be local or in S3)")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
@@ -199,4 +203,16 @@ func (d *Driver) Main() {
 	d.run()
 	end := time.Now()
 	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+		f.Close()
+	}
 }

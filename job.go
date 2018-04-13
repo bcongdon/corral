@@ -26,7 +26,6 @@ type Job struct {
 // Logic for running a single map task
 func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 	emitter := newMapperEmitter(j.intermediateBins, mapperID, j.outputPath, j.fileSystem)
-	defer emitter.close()
 
 	for _, split := range splits {
 		err := j.runMapperSplit(split, &emitter)
@@ -35,7 +34,7 @@ func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 		}
 	}
 
-	return nil
+	return emitter.close()
 }
 
 // runMapperSplit runs the mapper on a single inputSplit
@@ -76,7 +75,7 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 // Logic for running a single reduce task
 func (j *Job) runReducer(binID uint) error {
 	// Determine the intermediate data files this reducer is responsible for
-	path := j.fileSystem.Join(j.outputPath, fmt.Sprintf("map-bin%d*", binID))
+	path := j.fileSystem.Join(j.outputPath, fmt.Sprintf("map-bin%d-*", binID))
 	files, err := j.fileSystem.ListFiles(path)
 	if err != nil {
 		return err
@@ -90,8 +89,7 @@ func (j *Job) runReducer(binID uint) error {
 		return err
 	}
 
-	emitter := newReducerEmitter(emitWriter)
-	data := make(map[string][]string, 10000)
+	data := make(map[string][]string, 0)
 
 	for _, file := range files {
 		reader, err := j.fileSystem.OpenReader(file.Name, 0)
@@ -112,13 +110,14 @@ func (j *Job) runReducer(binID uint) error {
 			}
 
 			data[kv.Key] = append(data[kv.Key], kv.Value)
-
 		}
+		reader.Close()
 	}
 
 	var waitGroup sync.WaitGroup
 	sem := semaphore.NewWeighted(10)
 
+	emitter := newReducerEmitter(emitWriter)
 	for key, values := range data {
 		sem.Acquire(context.Background(), 1)
 		waitGroup.Add(1)
@@ -179,6 +178,7 @@ func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 		totalSize += fInfo.Size
 		splits = append(splits, splitInputFile(fInfo, maxSplitSize)...)
 	}
+	log.Debugf("Average split size: %d bytes", int(totalSize)/len(splits))
 
 	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 1.25)
 	if j.intermediateBins == 0 {

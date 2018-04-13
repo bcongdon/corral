@@ -17,7 +17,7 @@ test_al2_local_1node: amplab2
 	./amplab2 s3://big-data-benchmark/pavlo/text/1node/uservisits/*
 
 test_al2_lambda_tiny: amplab2 tiny_data
-	./amplab2 -lambda -out s3://${BUCKET} s3://${BUCKET}/*
+	./amplab2 -lambda -out s3://${BUCKET} s3://${BUCKET}/part-*
 
 test_al2_lambda_1node: amplab2
 	./amplab2 -lambda -out s3://${BUCKET} s3://big-data-benchmark/pavlo/text/1node/uservisits/*

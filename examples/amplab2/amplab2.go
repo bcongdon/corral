@@ -12,8 +12,8 @@ const subStrX = 8
 
 type amplab2 struct{}
 
-func max(a, b int) int {
-	if a > b {
+func min(a, b int) int {
+	if a < b {
 		return a
 	}
 	return b
@@ -28,7 +28,7 @@ func (a amplab2) Map(key, value string, emitter corral.Emitter) {
 
 	sourceIP := fields[0]
 	adRevenue := fields[3]
-	emitter.Emit(sourceIP[:max(subStrX, len(sourceIP))], adRevenue)
+	emitter.Emit(sourceIP[:min(subStrX, len(sourceIP))], adRevenue)
 }
 
 func (a amplab2) Reduce(key string, values corral.ValueIterator, emitter corral.Emitter) {
