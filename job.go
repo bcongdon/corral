@@ -90,6 +90,8 @@ func (j *Job) runReducer(binID uint) error {
 
 	emitter := newReducerEmitter(emitWriter)
 
+	data := make(map[string][]string, 10000)
+
 	keyChannels := make(map[string](chan string))
 	var waitGroup sync.WaitGroup
 
@@ -108,29 +110,41 @@ func (j *Job) runReducer(binID uint) error {
 				return err
 			}
 
-			// Create a reducer for the current key if necessary
-			keyChan, exists := keyChannels[kv.Key]
-			if !exists {
-				keyChan = make(chan string)
-				keyIter := newValueIterator(keyChan)
-				keyChannels[kv.Key] = keyChan
-
-				waitGroup.Add(1)
-				go func() {
-					defer waitGroup.Done()
-					j.Reduce.Reduce(kv.Key, keyIter, emitter)
-				}()
+			if _, ok := data[kv.Key]; !ok {
+				data[kv.Key] = make([]string, 0)
 			}
 
-			// Pass current value to the appropriate key channel
-			keyChan <- kv.Value
+			data[kv.Key] = append(data[kv.Key], kv.Value)
+
 		}
 	}
 
-	// Close key channels to signal that all intermediate data has been read
-	for _, keyChan := range keyChannels {
+	for key, values := range data {
+		// Create a reducer for the current key if necessary
+		keyChan, exists := keyChannels[key]
+		if !exists {
+			keyChan = make(chan string)
+			keyIter := newValueIterator(keyChan)
+			keyChannels[key] = keyChan
+
+			waitGroup.Add(1)
+			go func() {
+				defer waitGroup.Done()
+				j.Reduce.Reduce(key, keyIter, emitter)
+			}()
+		}
+
+		for _, value := range values {
+			// Pass current value to the appropriate key channel
+			keyChan <- value
+		}
 		close(keyChan)
 	}
+
+	// Close key channels to signal that all intermediate data has been read
+	// for _, keyChan := range keyChannels {
+	// 	close(keyChan)
+	// }
 	waitGroup.Wait()
 
 	return nil

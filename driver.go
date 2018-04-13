@@ -2,8 +2,10 @@ package corral
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	pb "gopkg.in/cheggaaa/pb.v1"
@@ -187,5 +189,8 @@ func (d *Driver) Main() {
 		d.config.WorkingLocation = *outputDir
 	}
 
+	start := time.Now()
 	d.run()
+	end := time.Now()
+	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
 }
