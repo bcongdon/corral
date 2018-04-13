@@ -2,12 +2,14 @@ package corral
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
 // Job is the logical container for a MapReduce job
@@ -89,18 +91,13 @@ func (j *Job) runReducer(binID uint) error {
 	}
 
 	emitter := newReducerEmitter(emitWriter)
-
 	data := make(map[string][]string, 10000)
-
-	keyChannels := make(map[string](chan string))
-	var waitGroup sync.WaitGroup
 
 	for _, file := range files {
 		reader, err := j.fileSystem.OpenReader(file.Name, 0)
 		if err != nil {
 			return err
 		}
-		// log.Infof("Reducing on intermediate file: %s", file.Name)
 
 		// Feed intermediate data into reducers
 		decoder := json.NewDecoder(reader)
@@ -119,26 +116,29 @@ func (j *Job) runReducer(binID uint) error {
 		}
 	}
 
-	for key, values := range data {
-		// Create a reducer for the current key if necessary
-		keyChan, exists := keyChannels[key]
-		if !exists {
-			keyChan = make(chan string)
-			keyIter := newValueIterator(keyChan)
-			keyChannels[key] = keyChan
+	var waitGroup sync.WaitGroup
+	sem := semaphore.NewWeighted(10)
 
-			waitGroup.Add(1)
+	for key, values := range data {
+		sem.Acquire(context.Background(), 1)
+		waitGroup.Add(1)
+		go func(key string, values []string) {
+			defer sem.Release(1)
+
+			keyChan := make(chan string)
+			keyIter := newValueIterator(keyChan)
+
 			go func() {
 				defer waitGroup.Done()
 				j.Reduce.Reduce(key, keyIter, emitter)
 			}()
-		}
 
-		for _, value := range values {
-			// Pass current value to the appropriate key channel
-			keyChan <- value
-		}
-		close(keyChan)
+			for _, value := range values {
+				// Pass current value to the appropriate key channel
+				keyChan <- value
+			}
+			close(keyChan)
+		}(key, values)
 	}
 
 	// Close key channels to signal that all intermediate data has been read

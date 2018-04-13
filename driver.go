@@ -96,6 +96,12 @@ func WithWorkingLocation(location string) Option {
 	}
 }
 
+func WithInputs(inputs ...string) Option {
+	return func(c *config) {
+		c.Inputs = append(c.Inputs, inputs...)
+	}
+}
+
 func (d *Driver) runMapPhase() {
 	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
 	d.job.outputPath = d.config.WorkingLocation
@@ -178,7 +184,7 @@ func (d *Driver) Main() {
 	log.SetLevel(log.DebugLevel)
 	flag.Parse()
 
-	d.config.Inputs = flag.Args()
+	d.config.Inputs = append(d.config.Inputs, flag.Args()...)
 	if *lambdaFlag {
 		d.executor = &lambdaExecutor{
 			corlambda.NewLambdaClient(),
