@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
+	humanize "github.com/dustin/go-humanize"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/semaphore"
 )
@@ -178,7 +179,7 @@ func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 		totalSize += fInfo.Size
 		splits = append(splits, splitInputFile(fInfo, maxSplitSize)...)
 	}
-	log.Debugf("Average split size: %d bytes", int(totalSize)/len(splits))
+	log.Debugf("Average split size: %s bytes", humanize.Bytes(uint64(totalSize)/uint64(len(splits))))
 
 	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 1.25)
 	if j.intermediateBins == 0 {

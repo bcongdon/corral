@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
+
 	lambdaMessages "github.com/aws/aws-lambda-go/lambda/messages"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,7 +22,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const MAX_LAMBDA_RETRIES = 5
+// MaxLambdaRetries is the number of times to try invoking a funciton
+// before giving up and returning an error
+const MaxLambdaRetries = 3
 
 // LambdaClient wraps the AWS Lambda API and provides functions for
 // deploying and invoking lambda functions
@@ -55,14 +59,14 @@ func (l *LambdaClient) DeployFunction(functionName string) error {
 	exists, err := l.getFunction(functionName)
 	if exists != nil && err == nil {
 		if functionNeedsUpdate(functionCode, exists.Configuration) {
-			log.Debugf("Updating Lambda function '%s'", functionName)
+			log.Infof("Updating Lambda function '%s'", functionName)
 			return l.updateFunction(functionName, functionCode)
 		}
-		log.Debugf("Function '%s' is already up-to-date", functionName)
+		log.Infof("Function '%s' is already up-to-date", functionName)
 		return nil
 	}
 
-	log.Debugf("Creating Lambda function '%s'", functionName)
+	log.Infof("Creating Lambda function '%s'", functionName)
 	return l.createFunction(functionName, functionCode)
 }
 
@@ -107,7 +111,7 @@ func crossCompile(binName string) (string, error) {
 // buildPackage builds the current directory as a lambda package.
 // It returns a byte slice containing a compressed binary that can be upload to lambda.
 func (l *LambdaClient) buildPackage() ([]byte, error) {
-	log.Debug("Compiling lambda function for Lambda")
+	log.Info("Building Lambda function")
 	binFile, err := crossCompile("lambda_artifact")
 	if err != nil {
 		return nil, err
@@ -142,6 +146,7 @@ func (l *LambdaClient) buildPackage() ([]byte, error) {
 	binReader.Close()
 	archive.Close()
 
+	log.Debugf("Final zipped function binary size: %s", humanize.Bytes(uint64(len(zipBuf.Bytes()))))
 	return zipBuf.Bytes(), nil
 }
 
@@ -206,9 +211,12 @@ func (l *LambdaClient) tryInvoke(functionName string, payload []byte) ([]byte, e
 			return nil, err
 		}
 
-		log.Debug("Function invocation error. Stack trace:")
-		for _, frame := range errPayload.StackTrace {
-			log.Debugf("\t%s\t%s:%d", frame.Label, frame.Path, frame.Line)
+		// Log stack trace if one was returned
+		if len(errPayload.StackTrace) > 0 {
+			log.Debug("Function invocation error. Stack trace:")
+			for _, frame := range errPayload.StackTrace {
+				log.Debugf("\t%s\t%s:%d", frame.Label, frame.Path, frame.Line)
+			}
 		}
 
 		return output.Payload, fmt.Errorf("Function error: %s", errPayload.Message)
@@ -218,11 +226,12 @@ func (l *LambdaClient) tryInvoke(functionName string, payload []byte) ([]byte, e
 
 // Invoke invokes the given Lambda function with the given payload.
 func (l *LambdaClient) Invoke(functionName string, payload []byte) (outputPayload []byte, err error) {
-	for try := 0; try < MAX_LAMBDA_RETRIES; try++ {
+	for try := 0; try < MaxLambdaRetries; try++ {
 		outputPayload, err = l.tryInvoke(functionName, payload)
 		if err == nil {
 			break
 		}
+		log.Debugf("Function invocation failed. (Attempt %s of %s)", try, MaxLambdaRetries)
 	}
 	return outputPayload, err
 }

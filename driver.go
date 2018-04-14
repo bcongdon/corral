@@ -116,9 +116,10 @@ func (d *Driver) runMapPhase() {
 		log.Warnf("No input splits")
 		os.Exit(0)
 	}
-	log.Debugf("Calculated %d inputsplits", len(inputSplits))
+	log.Debugf("Number of job input splits: %d", len(inputSplits))
 
 	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
+	log.Debugf("Number of job input bins: %d", len(inputBins))
 	bar := pb.New(len(inputBins)).Prefix("Map").Start()
 
 	var wg sync.WaitGroup

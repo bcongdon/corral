@@ -4,6 +4,7 @@ import (
 	"bufio"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
+	humanize "github.com/dustin/go-humanize"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -87,7 +88,7 @@ func packInputSplits(splits []inputSplit, maxBinSize int64) [][]inputSplit {
 		totalSize += bin.size
 		binnedSplits[i] = bin.splits
 	}
-	log.Debugf("Average input bin size: %d", totalSize/int64(len(bins)))
+	log.Debugf("Average input bin size: %s", humanize.Bytes(uint64(totalSize/int64(len(bins)))))
 	return binnedSplits
 }
 
