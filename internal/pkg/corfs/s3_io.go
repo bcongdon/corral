@@ -58,6 +58,7 @@ func (s *s3Reader) loadNextChunk() error {
 func (s *s3Reader) Read(b []byte) (n int, err error) {
 	n, err = s.chunk.Read(b)
 	if err == io.EOF && s.offset != s.totalSize {
+		s.chunk.Close()
 		err = s.loadNextChunk()
 	}
 	return n, err

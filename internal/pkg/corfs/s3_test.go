@@ -183,3 +183,43 @@ func TestS3Join(t *testing.T) {
 	res = backend.Join("s3://foo/", "/bar", "baz/")
 	assert.Equal(t, res, "s3://foo/bar/baz/")
 }
+
+func TestS3ReaderChunk(t *testing.T) {
+	bucket, backend := getS3TestBackend(t)
+	defer cleanup(backend, t)
+
+	path := bucket + "/testobj"
+
+	// Test writer
+	writer, err := backend.OpenWriter(path)
+	assert.Nil(t, err)
+
+	_, err = writer.Write([]byte("foo bar baz"))
+	assert.Nil(t, err)
+
+	err = writer.Close()
+	assert.Nil(t, err)
+
+	// Test reader w/ small chunk size
+	reader := &s3Reader{
+		client:    backend.s3Client,
+		bucket:    strings.TrimPrefix(bucket, "s3://"),
+		key:       "testobj",
+		offset:    0,
+		chunkSize: 3,
+		totalSize: 11,
+	}
+	err = reader.loadNextChunk()
+	fmt.Println(err)
+	assert.Nil(t, err)
+
+	// First chunk should advance reader offset by 3 bytes
+	assert.Equal(t, int64(3), reader.offset)
+
+	contents, err := ioutil.ReadAll(reader)
+	assert.Nil(t, err)
+	assert.Equal(t, "foo bar baz", string(contents))
+
+	err = reader.Close()
+	assert.Nil(t, err)
+}

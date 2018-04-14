@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/bcongdon/s3gof3r"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/mattetti/filebuffer"
 )
@@ -27,9 +26,8 @@ var validS3Schemes = map[string]bool{
 var globRegex = regexp.MustCompile(`^(.*?)([\[\*\?].*)$`)
 
 type S3Backend struct {
-	s3Client      *s3.S3
-	s3Gof3rClient *s3gof3r.S3
-	objectCache   *lru.Cache
+	s3Client    *s3.S3
+	objectCache *lru.Cache
 }
 
 func parseS3URI(uri string) (*url.URL, error) {
@@ -180,17 +178,6 @@ func (s *S3Backend) Init() error {
 	}
 	s.s3Client = s3.New(sess)
 
-	creds, err := sess.Config.Credentials.Get()
-	if err != nil {
-		return err
-	}
-
-	s.s3Gof3rClient = s3gof3r.New("", s3gof3r.Keys{
-		AccessKey:     creds.AccessKeyID,
-		SecretKey:     creds.SecretAccessKey,
-		SecurityToken: creds.SessionToken,
-	})
-
 	s.objectCache, _ = lru.New(10000)
 
 	return nil
@@ -202,8 +189,12 @@ func (s *S3Backend) Delete(filePath string) error {
 		return err
 	}
 
-	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
-	return bucket.Delete(parsed.Path)
+	params := &s3.DeleteObjectInput{
+		Bucket: aws.String(parsed.Hostname()),
+		Key:    aws.String(parsed.Path),
+	}
+	_, err = s.s3Client.DeleteObject(params)
+	return err
 }
 
 func (s *S3Backend) Join(elem ...string) string {

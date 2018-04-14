@@ -1,6 +1,7 @@
 package corral
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"runtime/pprof"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/semaphore"
 
 	log "github.com/sirupsen/logrus"
 	pb "gopkg.in/cheggaaa/pb.v1"
@@ -108,7 +111,6 @@ func (d *Driver) runMapPhase() {
 	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
 	d.job.outputPath = d.config.WorkingLocation
 
-	var wg sync.WaitGroup
 	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
@@ -118,10 +120,15 @@ func (d *Driver) runMapPhase() {
 
 	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
 	bar := pb.New(len(inputBins)).Prefix("Map").Start()
+
+	var wg sync.WaitGroup
+	sem := semaphore.NewWeighted(int64(d.config.MaxConcurrency))
 	for binID, bin := range inputBins {
+		sem.Acquire(context.Background(), 1)
 		wg.Add(1)
 		go func(bID uint, b []inputSplit) {
 			defer wg.Done()
+			defer sem.Release(1)
 			defer bar.Increment()
 			err := d.executor.RunMapper(d.job, bID, b)
 			if err != nil {
