@@ -22,10 +22,13 @@ import (
 
 const MAX_LAMBDA_RETRIES = 5
 
+// LambdaClient wraps the AWS Lambda API and provides functions for
+// deploying and invoking lambda functions
 type LambdaClient struct {
 	client *lambda.Lambda
 }
 
+// NewLambdaClient initializes a new LambdaClient
 func NewLambdaClient() *LambdaClient {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -42,6 +45,7 @@ func functionNeedsUpdate(functionCode []byte, cfg *lambda.FunctionConfiguration)
 	return codeHashDigest != *cfg.CodeSha256
 }
 
+// DeployFunction deploys the current directory as a lamba function
 func (l *LambdaClient) DeployFunction(functionName string) error {
 	functionCode, err := l.buildPackage()
 	if err != nil {
@@ -62,6 +66,7 @@ func (l *LambdaClient) DeployFunction(functionName string) error {
 	return l.createFunction(functionName, functionCode)
 }
 
+// DeleteFunction tears down the given function
 func (l *LambdaClient) DeleteFunction(functionName string) error {
 	deleteInput := &lambda.DeleteFunctionInput{
 		FunctionName: aws.String(functionName),
@@ -71,6 +76,8 @@ func (l *LambdaClient) DeleteFunction(functionName string) error {
 	return err
 }
 
+// crossCompile builds the current directory as a lambda package.
+// It returns the location of a built binary file.
 func crossCompile(binName string) (string, error) {
 	tmpDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -97,13 +104,15 @@ func crossCompile(binName string) (string, error) {
 	return outputPath, nil
 }
 
+// buildPackage builds the current directory as a lambda package.
+// It returns a byte slice containing a compressed binary that can be upload to lambda.
 func (l *LambdaClient) buildPackage() ([]byte, error) {
 	log.Debug("Compiling lambda function for Lambda")
 	binFile, err := crossCompile("lambda_artifact")
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(filepath.Dir(binFile))
+	defer os.RemoveAll(filepath.Dir(binFile)) // Remove temporary binary file
 
 	log.Debug("Opening recompiled binary to be zipped")
 	binReader, err := os.Open(binFile)
@@ -136,6 +145,7 @@ func (l *LambdaClient) buildPackage() ([]byte, error) {
 	return zipBuf.Bytes(), nil
 }
 
+// updateFunction updates the lambda function with the given name with the given code as function binary
 func (l *LambdaClient) updateFunction(functionName string, code []byte) error {
 	updateArgs := &lambda.UpdateFunctionCodeInput{
 		ZipFile:      code,
@@ -146,6 +156,7 @@ func (l *LambdaClient) updateFunction(functionName string, code []byte) error {
 	return err
 }
 
+// createFunction creates a lambda function with the given name and uses code as the function binary
 func (l *LambdaClient) createFunction(functionName string, code []byte) error {
 	funcCode := &lambda.FunctionCode{
 		ZipFile: code,
@@ -205,6 +216,7 @@ func (l *LambdaClient) tryInvoke(functionName string, payload []byte) ([]byte, e
 	return output.Payload, err
 }
 
+// Invoke invokes the given Lambda function with the given payload.
 func (l *LambdaClient) Invoke(functionName string, payload []byte) (outputPayload []byte, err error) {
 	for try := 0; try < MAX_LAMBDA_RETRIES; try++ {
 		outputPayload, err = l.tryInvoke(functionName, payload)
