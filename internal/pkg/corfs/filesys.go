@@ -23,6 +23,7 @@ type FileSystem interface {
 	Stat(filePath string) (FileInfo, error)
 	OpenReader(filePath string, startAt int64) (io.ReadCloser, error)
 	OpenWriter(filePath string) (io.WriteCloser, error)
+	Delete(filePath string) error
 	Join(elem ...string) string
 	Init() error
 }
@@ -47,6 +48,10 @@ func InitFilesystem(fsType FileSystemType) FileSystem {
 	return fs
 }
 
+// InferFilesystem initializes a filesystem by inferring its type from
+// a file address.
+// For example, locations starting with "s3://" will resolve to an S3
+// filesystem.
 func InferFilesystem(location string) FileSystem {
 	var fs FileSystem
 	if strings.HasPrefix(location, "s3://") {

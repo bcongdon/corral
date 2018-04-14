@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// LocalFileSystem wraps "os" to provide access to the local filesystem.
 type LocalFileSystem struct{}
 
 func walkDir(dir string) []FileInfo {
@@ -30,6 +31,7 @@ func walkDir(dir string) []FileInfo {
 	return files
 }
 
+// ListFiles lists files that match pathGlob.
 func (l *LocalFileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	globbedFiles, err := filepath.Glob(pathGlob)
 	if err != nil {
@@ -56,6 +58,8 @@ func (l *LocalFileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	return files, err
 }
 
+// OpenReader opens a reader to the file at filePath. The reader
+// is initially seeked to "startAt" bytes into the file.
 func (l *LocalFileSystem) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0600)
 	if err != nil {
@@ -65,10 +69,12 @@ func (l *LocalFileSystem) OpenReader(filePath string, startAt int64) (io.ReadClo
 	return file, err
 }
 
+// OpenWriter opens a writer to the file at filePath.
 func (l *LocalFileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 
+// Stat returns information about the file at filePath.
 func (l *LocalFileSystem) Stat(filePath string) (FileInfo, error) {
 	fInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -80,10 +86,17 @@ func (l *LocalFileSystem) Stat(filePath string) (FileInfo, error) {
 	}, nil
 }
 
+// Init initializes the filesystem.
 func (l *LocalFileSystem) Init() error {
 	return nil
 }
 
+// Join joins file path elements
 func (l *LocalFileSystem) Join(elem ...string) string {
 	return filepath.Join(elem...)
+}
+
+// Delete deletes the file at filePath,
+func (l *LocalFileSystem) Delete(filePath string) error {
+	return os.Remove(filePath)
 }

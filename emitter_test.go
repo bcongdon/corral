@@ -104,6 +104,8 @@ func (m *mockFs) Init() error { return nil }
 
 func (m *mockFs) Join(e ...string) string { return strings.Join(e, "/") }
 
+func (m *mockFs) Delete(string) error { return nil }
+
 func TestMapperEmitter(t *testing.T) {
 	mFs := &mockFs{writers: make(map[string]*testWriteCloser)}
 	var fs corfs.FileSystem = mFs

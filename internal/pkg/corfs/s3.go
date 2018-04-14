@@ -25,6 +25,7 @@ var validS3Schemes = map[string]bool{
 
 var globRegex = regexp.MustCompile(`^(.*?)([\[\*\?].*)$`)
 
+// S3FileSystem abstracts AWS S3 as a filesystem
 type S3FileSystem struct {
 	s3Client    *s3.S3
 	objectCache *lru.Cache
@@ -48,6 +49,7 @@ func parseS3URI(uri string) (*url.URL, error) {
 	return parsed, err
 }
 
+// ListFiles lists files that match pathGlob.
 func (s *S3FileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	s3Files := make([]FileInfo, 0)
 
@@ -97,6 +99,8 @@ func (s *S3FileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	return s3Files, err
 }
 
+// OpenReader opens a reader to the file at filePath. The reader
+// is initially seeked to "startAt" bytes into the file.
 func (s *S3FileSystem) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
@@ -120,6 +124,7 @@ func (s *S3FileSystem) OpenReader(filePath string, startAt int64) (io.ReadCloser
 	return reader, err
 }
 
+// OpenWriter opens a writer to the file at filePath.
 func (s *S3FileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
@@ -135,6 +140,7 @@ func (s *S3FileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	return writer, nil
 }
 
+// Stat returns information about the file at filePath.
 func (s *S3FileSystem) Stat(filePath string) (FileInfo, error) {
 	if object, exists := s.objectCache.Get(filePath); exists {
 		return FileInfo{
@@ -170,6 +176,7 @@ func (s *S3FileSystem) Stat(filePath string) (FileInfo, error) {
 	return FileInfo{}, errors.New("No file with given filename")
 }
 
+// Init initializes the filesystem.
 func (s *S3FileSystem) Init() error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	sess, err := session.NewSession()
@@ -183,6 +190,7 @@ func (s *S3FileSystem) Init() error {
 	return nil
 }
 
+// Delete deletes the file at filePath.
 func (s *S3FileSystem) Delete(filePath string) error {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
@@ -197,6 +205,7 @@ func (s *S3FileSystem) Delete(filePath string) error {
 	return err
 }
 
+// Join joins file path elements
 func (s *S3FileSystem) Join(elem ...string) string {
 	stripped := make([]string, len(elem))
 	for i, str := range elem {
