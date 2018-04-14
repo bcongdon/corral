@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getS3TestBackend(t *testing.T) (string, *S3Backend) {
-	backend := &S3Backend{}
+func getS3TestBackend(t *testing.T) (string, *S3FileSystem) {
+	backend := &S3FileSystem{}
 
 	bucket := os.Getenv("AWS_TEST_BUCKET")
 	if bucket == "" {
@@ -24,7 +24,7 @@ func getS3TestBackend(t *testing.T) (string, *S3Backend) {
 	return fmt.Sprintf("s3://%s", bucket), backend
 }
 
-func cleanup(backend *S3Backend, t *testing.T) {
+func cleanup(backend *S3FileSystem, t *testing.T) {
 	bucket := os.Getenv("AWS_TEST_BUCKET")
 	objects, err := backend.ListFiles("s3://" + bucket + "/")
 
@@ -36,7 +36,7 @@ func cleanup(backend *S3Backend, t *testing.T) {
 }
 
 func TestS3ImplementsFileSystem(t *testing.T) {
-	backend := S3Backend{}
+	backend := S3FileSystem{}
 	var fileSystem FileSystem
 	fileSystem = &backend
 

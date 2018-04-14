@@ -25,7 +25,7 @@ var validS3Schemes = map[string]bool{
 
 var globRegex = regexp.MustCompile(`^(.*?)([\[\*\?].*)$`)
 
-type S3Backend struct {
+type S3FileSystem struct {
 	s3Client    *s3.S3
 	objectCache *lru.Cache
 }
@@ -48,7 +48,7 @@ func parseS3URI(uri string) (*url.URL, error) {
 	return parsed, err
 }
 
-func (s *S3Backend) ListFiles(pathGlob string) ([]FileInfo, error) {
+func (s *S3FileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	s3Files := make([]FileInfo, 0)
 
 	parsed, err := parseS3URI(pathGlob)
@@ -97,7 +97,7 @@ func (s *S3Backend) ListFiles(pathGlob string) ([]FileInfo, error) {
 	return s3Files, err
 }
 
-func (s *S3Backend) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
+func (s *S3FileSystem) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (s *S3Backend) OpenReader(filePath string, startAt int64) (io.ReadCloser, e
 	return reader, err
 }
 
-func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
+func (s *S3FileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
 	return writer, nil
 }
 
-func (s *S3Backend) Stat(filePath string) (FileInfo, error) {
+func (s *S3FileSystem) Stat(filePath string) (FileInfo, error) {
 	if object, exists := s.objectCache.Get(filePath); exists {
 		return FileInfo{
 			Name: filePath,
@@ -170,7 +170,7 @@ func (s *S3Backend) Stat(filePath string) (FileInfo, error) {
 	return FileInfo{}, errors.New("No file with given filename")
 }
 
-func (s *S3Backend) Init() error {
+func (s *S3FileSystem) Init() error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	sess, err := session.NewSession()
 	if err != nil {
@@ -183,7 +183,7 @@ func (s *S3Backend) Init() error {
 	return nil
 }
 
-func (s *S3Backend) Delete(filePath string) error {
+func (s *S3FileSystem) Delete(filePath string) error {
 	parsed, err := parseS3URI(filePath)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (s *S3Backend) Delete(filePath string) error {
 	return err
 }
 
-func (s *S3Backend) Join(elem ...string) string {
+func (s *S3FileSystem) Join(elem ...string) string {
 	stripped := make([]string, len(elem))
 	for i, str := range elem {
 		if strings.HasPrefix(str, "/") {

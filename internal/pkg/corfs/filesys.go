@@ -38,9 +38,9 @@ func InitFilesystem(fsType FileSystemType) FileSystem {
 	var fs FileSystem
 	switch fsType {
 	case Local:
-		fs = &LocalFilesystem{}
+		fs = &LocalFileSystem{}
 	case S3:
-		fs = &S3Backend{}
+		fs = &S3FileSystem{}
 	}
 
 	fs.Init()
@@ -50,9 +50,9 @@ func InitFilesystem(fsType FileSystemType) FileSystem {
 func InferFilesystem(location string) FileSystem {
 	var fs FileSystem
 	if strings.HasPrefix(location, "s3://") {
-		fs = &S3Backend{}
+		fs = &S3FileSystem{}
 	} else {
-		fs = &LocalFilesystem{}
+		fs = &LocalFileSystem{}
 	}
 
 	fs.Init()

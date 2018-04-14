@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type LocalFilesystem struct{}
+type LocalFileSystem struct{}
 
 func walkDir(dir string) []FileInfo {
 	files := make([]FileInfo, 0)
@@ -30,7 +30,7 @@ func walkDir(dir string) []FileInfo {
 	return files
 }
 
-func (l *LocalFilesystem) ListFiles(pathGlob string) ([]FileInfo, error) {
+func (l *LocalFileSystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	globbedFiles, err := filepath.Glob(pathGlob)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (l *LocalFilesystem) ListFiles(pathGlob string) ([]FileInfo, error) {
 	return files, err
 }
 
-func (l *LocalFilesystem) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
+func (l *LocalFileSystem) OpenReader(filePath string, startAt int64) (io.ReadCloser, error) {
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, err
@@ -65,11 +65,11 @@ func (l *LocalFilesystem) OpenReader(filePath string, startAt int64) (io.ReadClo
 	return file, err
 }
 
-func (l *LocalFilesystem) OpenWriter(filePath string) (io.WriteCloser, error) {
+func (l *LocalFileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 
-func (l *LocalFilesystem) Stat(filePath string) (FileInfo, error) {
+func (l *LocalFileSystem) Stat(filePath string) (FileInfo, error) {
 	fInfo, err := os.Stat(filePath)
 	if err != nil {
 		return FileInfo{}, err
@@ -80,10 +80,10 @@ func (l *LocalFilesystem) Stat(filePath string) (FileInfo, error) {
 	}, nil
 }
 
-func (l *LocalFilesystem) Init() error {
+func (l *LocalFileSystem) Init() error {
 	return nil
 }
 
-func (l *LocalFilesystem) Join(elem ...string) string {
+func (l *LocalFileSystem) Join(elem ...string) string {
 	return filepath.Join(elem...)
 }
