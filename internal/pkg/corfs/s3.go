@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bcongdon/s3gof3r"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/mattetti/filebuffer"
 )
 
 var validS3Schemes = map[string]bool{
@@ -104,13 +105,20 @@ func (s *S3Backend) OpenReader(filePath string, startAt int64) (io.ReadCloser, e
 		return nil, err
 	}
 
-	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
+	objStat, err := s.Stat(filePath)
+	if err != nil {
+		return nil, err
+	}
 
-	cfg := &s3gof3r.Config{}
-	*cfg = *s3gof3r.DefaultConfig
-	cfg.Concurrency = 1
-	cfg.Md5Check = false
-	reader, _, err := bucket.GetOffsetReader(parsed.Path, cfg, startAt)
+	reader := &s3Reader{
+		client:    s.s3Client,
+		bucket:    parsed.Hostname(),
+		key:       parsed.Path,
+		offset:    startAt,
+		chunkSize: 20 * 1024 * 1024, // 20 Mb chunk size
+		totalSize: objStat.Size,
+	}
+	err = reader.loadNextChunk()
 	return reader, err
 }
 
@@ -120,14 +128,13 @@ func (s *S3Backend) OpenWriter(filePath string) (io.WriteCloser, error) {
 		return nil, err
 	}
 
-	bucket := s.s3Gof3rClient.Bucket(parsed.Hostname())
-
-	cfg := &s3gof3r.Config{}
-	*cfg = *s3gof3r.DefaultConfig
-	cfg.Concurrency = 1
-	cfg.Md5Check = false
-	cfg.PartSize = 0
-	return bucket.PutWriter(parsed.Path, nil, cfg)
+	writer := &s3Writer{
+		client: s.s3Client,
+		bucket: parsed.Hostname(),
+		key:    parsed.Path,
+		buf:    filebuffer.New(nil),
+	}
+	return writer, nil
 }
 
 func (s *S3Backend) Stat(filePath string) (FileInfo, error) {

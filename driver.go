@@ -37,10 +37,10 @@ type config struct {
 func newConfig() *config {
 	return &config{
 		Inputs:          []string{},
-		SplitSize:       100 * 1024 * 1024,  // Default input split size is 100Mb
-		MapBinSize:      1536 * 1024 * 1024, // Default map bin size is 1.5Gb
-		ReduceBinSize:   1024 * 1024 * 1024, // Default reduce bin size is 1Gb
-		MaxConcurrency:  100,                // TODO: Not currently enforced
+		SplitSize:       100 * 1024 * 1024, // Default input split size is 100Mb
+		MapBinSize:      512 * 1024 * 1024, // Default map bin size is 512Mb
+		ReduceBinSize:   512 * 1024 * 1024, // Default reduce bin size is 512Mb
+		MaxConcurrency:  100,               // TODO: Not currently enforced
 		WorkingLocation: ".",
 	}
 }

@@ -157,8 +157,8 @@ func (l *LambdaClient) createFunction(functionName string, code []byte) error {
 		Handler:      aws.String("main"),
 		Runtime:      aws.String(lambda.RuntimeGo1X),
 		Role:         aws.String("arn:aws:iam::847166266056:role/flask-example-dev-ZappaLambdaExecutionRole"),
-		Timeout:      aws.Int64(300),
-		MemorySize:   aws.Int64(3000),
+		Timeout:      aws.Int64(60),
+		MemorySize:   aws.Int64(1500),
 	}
 
 	_, err := l.client.CreateFunction(createArgs)

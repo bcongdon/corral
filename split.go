@@ -4,6 +4,7 @@ import (
 	"bufio"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
+	log "github.com/sirupsen/logrus"
 )
 
 // inputSplit contains the information about a contiguous chunk of an input file.
@@ -81,9 +82,12 @@ func packInputSplits(splits []inputSplit, maxBinSize int64) [][]inputSplit {
 	}
 
 	binnedSplits := make([][]inputSplit, len(bins))
+	totalSize := int64(0)
 	for i, bin := range bins {
+		totalSize += bin.size
 		binnedSplits[i] = bin.splits
 	}
+	log.Debugf("Average input bin size: %d", totalSize/int64(len(bins)))
 	return binnedSplits
 }
 
