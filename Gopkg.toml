@@ -27,11 +27,19 @@
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
-  version = "1.13.30"
+  version = "1.13.32"
 
 [[constraint]]
-  name = "github.com/bcongdon/s3gof3r"
-  version = "0.5.0"
+  branch = "master"
+  name = "github.com/dustin/go-humanize"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mattetti/filebuffer"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -40,6 +48,10 @@
 [[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.1"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sync"
 
 [[constraint]]
   name = "gopkg.in/cheggaaa/pb.v1"
