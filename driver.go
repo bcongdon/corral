@@ -43,7 +43,7 @@ func newConfig() *config {
 		SplitSize:       100 * 1024 * 1024, // Default input split size is 100Mb
 		MapBinSize:      512 * 1024 * 1024, // Default map bin size is 512Mb
 		ReduceBinSize:   512 * 1024 * 1024, // Default reduce bin size is 512Mb
-		MaxConcurrency:  100,               // TODO: Not currently enforced
+		MaxConcurrency:  500,               // Maximum number of concurrent executors
 		WorkingLocation: ".",
 	}
 }
