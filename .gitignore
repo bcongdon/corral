@@ -14,7 +14,7 @@
 .glide/
 
 vendor/
-word_count
 .vscode
-amplab1
-amplab2
+*.gif
+bin/
+output-*

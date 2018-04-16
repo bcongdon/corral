@@ -1,31 +1,35 @@
 BUCKET = ${AWS_TEST_BUCKET}
-all: amplab2
 
-amplab2: amplab2.go ../../*.go ../../internal/pkg/**/*.go
-	go build -o amplab2 amplab2.go
+BIN_DIR = ./bin
+PROG_NAME = amplab2
+AMPLAB_PATH = big-data-benchmark/pavlo/text
 
-test_al2_local_tiny: amplab2
-	./amplab2 data/*
+.PHONY: all clean $(PROG_NAME) input_in_s3
+
+all: $(PROG_NAME)
+
+$(PROG_NAME):
+	go build -o $(BIN_DIR)/$@ .
+
+test_al1_local_tiny: $(PROG_NAME)
+	$(BIN_DIR)/$(PROG_NAME) data/*
 
 tiny_data:
 	aws s3 cp --recursive ./data/ s3://${BUCKET}
 
-test_al2_s3_tiny: amplab2 tiny_data
-	./amplab2 -out s3://${BUCKET} s3://${BUCKET}/part-*
+test_al2_s3_tiny: $(PROG_NAME) tiny_data
+	$(BIN_DIR)/$(PROG_NAME) -out s3://${BUCKET} s3://${BUCKET}/part-*
 
-test_al2_local_1node: amplab2
-	./amplab2 s3://big-data-benchmark/pavlo/text/1node/uservisits/*
+test_al2_lambda_tiny: $(PROG_NAME) tiny_data
+	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://${BUCKET}/part-*
 
-test_al2_lambda_tiny: amplab2 tiny_data
-	./amplab2 -lambda -out s3://${BUCKET} s3://${BUCKET}/part-*
+test_al2_lambda_1node: $(PROG_NAME)
+	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/1node/uservisits/part-*
 
-test_al2_lambda_1node: amplab2
-	./amplab2 -lambda -out s3://${BUCKET} s3://big-data-benchmark/pavlo/text/1node/uservisits/part-*
-
-test_al2_lambda_5node: amplab2
-	./amplab2 -lambda -out s3://${BUCKET} s3://big-data-benchmark/pavlo/text/5nodes/uservisits/part-*
+test_al2_lambda_5node: $(PROG_NAME)
+	.$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/uservisits/part-*
 
 clean:
 	find . -name "*.out" -print0 | xargs -0 rm
-	rm -f amplab2 output*
+	rm -f $(BIN_DIR)/$(PROG_NAME) output*
 	aws s3 rm s3://${BUCKET} --recursive
