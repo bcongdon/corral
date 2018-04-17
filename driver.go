@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bcongdon/corral/internal/pkg/corfs"
 	"github.com/bcongdon/corral/internal/pkg/corlambda"
+	"github.com/spf13/pflag"
 )
 
 // Driver controls the execution of a MapReduce Job
@@ -40,14 +41,18 @@ type config struct {
 }
 
 func newConfig() *config {
+	// Register command line flags
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	viper.BindPFlags(pflag.CommandLine)
+
 	loadConfig() // Load viper config from settings file(s) and environment
 	return &config{
 		Inputs:          []string{},
-		SplitSize:       viper.GetInt64("split_size"),
-		MapBinSize:      viper.GetInt64("map_bin_size"),
-		ReduceBinSize:   viper.GetInt64("reduce_bin_size"),
-		MaxConcurrency:  viper.GetInt("max_concurrency"),
-		WorkingLocation: viper.GetString("working_location"),
+		SplitSize:       viper.GetInt64("splitSize"),
+		MapBinSize:      viper.GetInt64("mapBinSize"),
+		ReduceBinSize:   viper.GetInt64("reduceBinSize"),
+		MaxConcurrency:  viper.GetInt("maxConcurrency"),
+		WorkingLocation: viper.GetString("workingLocation"),
 	}
 }
 
@@ -56,8 +61,6 @@ type Option func(*config)
 
 // NewDriver creates a new Driver with the provided job and optional configuration
 func NewDriver(job *Job, options ...Option) *Driver {
-	log.SetLevel(log.DebugLevel)
-
 	d := &Driver{
 		job:      job,
 		executor: localExecutor{},
@@ -107,6 +110,7 @@ func WithWorkingLocation(location string) Option {
 	}
 }
 
+// WithInputs specifies job inputs (i.e. input files/directories)
 func WithInputs(inputs ...string) Option {
 	return func(c *config) {
 		c.Inputs = append(c.Inputs, inputs...)
@@ -193,19 +197,23 @@ func (d *Driver) run() {
 }
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
-var outputDir = flag.String("out", "", "Output directory (can be local or in S3)")
-var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+var outputDir = flag.String("out", "", "Output `directory` (can be local or in S3)")
+var memprofile = flag.String("memprofile", "", "Write memory profile to `file`")
+var verbose = flag.Bool("verbose", false, "Output verbose logs")
 
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
 	flag.Parse()
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	d.config.Inputs = append(d.config.Inputs, flag.Args()...)
 	if *lambdaFlag {
 		d.executor = &lambdaExecutor{
 			corlambda.NewLambdaClient(),
-			"corral_test_function",
+			viper.GetString("lambdaFunctionName"),
 		}
 	}
 	if *outputDir != "" {

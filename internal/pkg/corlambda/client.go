@@ -32,6 +32,13 @@ type LambdaClient struct {
 	client *lambda.Lambda
 }
 
+type FunctionConfig struct {
+	Name       string
+	RoleARN    string
+	Timeout    int64
+	MemorySize int64
+}
+
 // NewLambdaClient initializes a new LambdaClient
 func NewLambdaClient() *LambdaClient {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -49,25 +56,50 @@ func functionNeedsUpdate(functionCode []byte, cfg *lambda.FunctionConfiguration)
 	return codeHashDigest != *cfg.CodeSha256
 }
 
+func functionConfigNeedsUpdate(function *FunctionConfig, cfg *lambda.FunctionConfiguration) bool {
+	return function.RoleARN != *cfg.Role || function.MemorySize != *cfg.MemorySize || function.Timeout != *cfg.Timeout
+}
+
+// updateFunctionSettings updates the provided lambda function settings (i.e. for memory and timeout)
+func (l *LambdaClient) updateFunctionSettings(function *FunctionConfig) error {
+	params := &lambda.UpdateFunctionConfigurationInput{
+		FunctionName: aws.String(function.Name),
+		Role:         aws.String(function.RoleARN),
+		Timeout:      aws.Int64(function.Timeout),
+		MemorySize:   aws.Int64(function.MemorySize),
+	}
+	_, err := l.client.UpdateFunctionConfiguration(params)
+	return err
+}
+
 // DeployFunction deploys the current directory as a lamba function
-func (l *LambdaClient) DeployFunction(functionName string) error {
+func (l *LambdaClient) DeployFunction(function *FunctionConfig) error {
 	functionCode, err := l.buildPackage()
 	if err != nil {
 		panic(err)
 	}
 
-	exists, err := l.getFunction(functionName)
+	exists, err := l.getFunction(function.Name)
 	if exists != nil && err == nil {
+		updated := false
 		if functionNeedsUpdate(functionCode, exists.Configuration) {
-			log.Infof("Updating Lambda function '%s'", functionName)
-			return l.updateFunction(functionName, functionCode)
+			log.Infof("Updating Lambda function code for '%s'", function.Name)
+			err = l.updateFunction(function, functionCode)
+			updated = true
 		}
-		log.Infof("Function '%s' is already up-to-date", functionName)
-		return nil
+		if functionConfigNeedsUpdate(function, exists.Configuration) {
+			err = l.updateFunctionSettings(function)
+			log.Infof("Updating Lambda function config for '%s'", function.Name)
+			updated = true
+		}
+		if !updated {
+			log.Infof("Function '%s' is already up-to-date", function.Name)
+		}
+		return err
 	}
 
-	log.Infof("Creating Lambda function '%s'", functionName)
-	return l.createFunction(functionName, functionCode)
+	log.Infof("Creating Lambda function '%s'", function.Name)
+	return l.createFunction(function, functionCode)
 }
 
 // DeleteFunction tears down the given function
@@ -151,10 +183,10 @@ func (l *LambdaClient) buildPackage() ([]byte, error) {
 }
 
 // updateFunction updates the lambda function with the given name with the given code as function binary
-func (l *LambdaClient) updateFunction(functionName string, code []byte) error {
+func (l *LambdaClient) updateFunction(function *FunctionConfig, code []byte) error {
 	updateArgs := &lambda.UpdateFunctionCodeInput{
 		ZipFile:      code,
-		FunctionName: aws.String(functionName),
+		FunctionName: aws.String(function.Name),
 	}
 
 	_, err := l.client.UpdateFunctionCode(updateArgs)
@@ -162,19 +194,19 @@ func (l *LambdaClient) updateFunction(functionName string, code []byte) error {
 }
 
 // createFunction creates a lambda function with the given name and uses code as the function binary
-func (l *LambdaClient) createFunction(functionName string, code []byte) error {
+func (l *LambdaClient) createFunction(function *FunctionConfig, code []byte) error {
 	funcCode := &lambda.FunctionCode{
 		ZipFile: code,
 	}
 
 	createArgs := &lambda.CreateFunctionInput{
 		Code:         funcCode,
-		FunctionName: aws.String(functionName),
+		FunctionName: aws.String(function.Name),
 		Handler:      aws.String("main"),
 		Runtime:      aws.String(lambda.RuntimeGo1X),
-		Role:         aws.String("arn:aws:iam::847166266056:role/flask-example-dev-ZappaLambdaExecutionRole"),
-		Timeout:      aws.Int64(60),
-		MemorySize:   aws.Int64(1500),
+		Role:         aws.String(function.RoleARN),
+		Timeout:      aws.Int64(function.Timeout),
+		MemorySize:   aws.Int64(function.MemorySize),
 	}
 
 	_, err := l.client.CreateFunction(createArgs)

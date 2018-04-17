@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/viper"
+
 	"github.com/bcongdon/corral/internal/pkg/corfs"
 	"github.com/bcongdon/corral/internal/pkg/corlambda"
 )
@@ -81,5 +83,11 @@ func (l *lambdaExecutor) RunReducer(job *Job, binID uint) error {
 }
 
 func (l *lambdaExecutor) Deploy() {
-	l.DeployFunction(l.functionName)
+	config := &corlambda.FunctionConfig{
+		Name:       l.functionName,
+		RoleARN:    viper.GetString("lambdaRoleARN"),
+		Timeout:    viper.GetInt64("lambdaTimeout"),
+		MemorySize: viper.GetInt64("lambdaMemory"),
+	}
+	l.DeployFunction(config)
 }

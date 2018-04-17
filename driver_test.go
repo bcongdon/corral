@@ -72,7 +72,7 @@ func TestLocalMapReduce(t *testing.T) {
 	job := NewJob(testMR{}, testMR{})
 	driver := NewDriver(
 		job,
-		WithInputs(inputPath),
+		WithInputs(tmpdir),
 		WithWorkingLocation(tmpdir),
 	)
 

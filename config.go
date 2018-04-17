@@ -19,16 +19,16 @@ func loadConfig() {
 
 func setupDefaults() {
 	defaultSettings := map[string]interface{}{
-		"function_name":    "corral_function",
-		"max_memory":       1500,
-		"max_timeout":      180,
-		"cleanup":          false,
-		"verbose":          false,
-		"split_size":       100 * 1024 * 1024, // Default input split size is 100Mb
-		"map_bin_size":     512 * 1024 * 1024, // Default map bin size is 512Mb
-		"reduce_bin_size":  512 * 1024 * 1024, // Default reduce bin size is 512Mb
-		"max_concurrency":  500,               // Maximum number of concurrent executors
-		"working_location": ".",
+		"lambdaFunctionName": "corral_function",
+		"lambdaMemory":       1500,
+		"lambdaTimeout":      180,
+		"cleanup":            false,
+		"verbose":            false,
+		"splitSize":          100 * 1024 * 1024, // Default input split size is 100Mb
+		"mapBinSize":         512 * 1024 * 1024, // Default map bin size is 512Mb
+		"reduceBinSize":      512 * 1024 * 1024, // Default reduce bin size is 512Mb
+		"maxConcurrency":     500,               // Maximum number of concurrent executors
+		"workingLocation":    ".",
 	}
 	for key, value := range defaultSettings {
 		viper.SetDefault(key, value)
