@@ -23,7 +23,8 @@ func TestLocalListFiles(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 	assert.Nil(t, err)
 
-	ioutil.WriteFile(path.Join(tmpdir, "tmpfile"), []byte("foo"), 0777)
+	tmpFilePath := path.Join(tmpdir, "tmpfile")
+	ioutil.WriteFile(tmpFilePath, []byte("foo"), 0777)
 
 	fs := LocalFileSystem{}
 
@@ -31,7 +32,7 @@ func TestLocalListFiles(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Len(t, files, 1)
-	assert.Equal(t, "tmpfile", files[0].Name)
+	assert.Equal(t, tmpFilePath, files[0].Name)
 }
 
 func TestLocalOpenReader(t *testing.T) {

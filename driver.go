@@ -25,7 +25,7 @@ import (
 
 // Driver controls the execution of a MapReduce Job
 type Driver struct {
-	job      *Job
+	jobs     []*Job
 	config   *config
 	executor executor
 }
@@ -62,7 +62,7 @@ type Option func(*config)
 // NewDriver creates a new Driver with the provided job and optional configuration
 func NewDriver(job *Job, options ...Option) *Driver {
 	d := &Driver{
-		job:      job,
+		jobs:     []*Job{job},
 		executor: localExecutor{},
 	}
 
@@ -80,6 +80,12 @@ func NewDriver(job *Job, options ...Option) *Driver {
 	log.Debugf("Loaded config: %#v", c)
 
 	return d
+}
+
+func NewMultiStageDriver(jobs []*Job, options ...Option) *Driver {
+	driver := NewDriver(nil, options...)
+	driver.jobs = jobs
+	return driver
 }
 
 // WithSplitSize sets the SplitSize of the Driver
@@ -117,11 +123,11 @@ func WithInputs(inputs ...string) Option {
 	}
 }
 
-func (d *Driver) runMapPhase() {
-	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
-	d.job.outputPath = d.config.WorkingLocation
+func (d *Driver) runMapPhase(job *Job) {
+	job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
+	job.outputPath = d.config.WorkingLocation
 
-	inputSplits := d.job.inputSplits(d.config.Inputs, d.config.SplitSize)
+	inputSplits := job.inputSplits(d.config.Inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
 		os.Exit(0)
@@ -141,7 +147,7 @@ func (d *Driver) runMapPhase() {
 			defer wg.Done()
 			defer sem.Release(1)
 			defer bar.Increment()
-			err := d.executor.RunMapper(d.job, bID, b)
+			err := d.executor.RunMapper(job, bID, b)
 			if err != nil {
 				log.Errorf("Error when running mapper %d: %s", bID, err)
 			}
@@ -151,18 +157,18 @@ func (d *Driver) runMapPhase() {
 	bar.Finish()
 }
 
-func (d *Driver) runReducePhase() {
-	d.job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
-	d.job.outputPath = d.config.WorkingLocation
+func (d *Driver) runReducePhase(job *Job) {
+	job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
+	job.outputPath = d.config.WorkingLocation
 
 	var wg sync.WaitGroup
-	bar := pb.New(int(d.job.intermediateBins)).Prefix("Reduce").Start()
-	for binID := uint(0); binID < d.job.intermediateBins; binID++ {
+	bar := pb.New(int(job.intermediateBins)).Prefix("Reduce").Start()
+	for binID := uint(0); binID < job.intermediateBins; binID++ {
 		wg.Add(1)
 		go func(bID uint) {
 			defer wg.Done()
 			defer bar.Increment()
-			err := d.executor.RunReducer(d.job, bID)
+			err := d.executor.RunReducer(job, bID)
 			if err != nil {
 				log.Errorf("Error when running reducer %d: %s", bID, err)
 			}
@@ -174,15 +180,10 @@ func (d *Driver) runReducePhase() {
 
 // run starts the Driver
 func (d *Driver) run() {
-	d.job.config = d.config
-	d.job.outputPath = d.config.WorkingLocation
-
 	if runningInLambda() {
-		currentJob = d.job
-
+		lambdaDriver = d
 		lambda.Start(handleRequest)
 	}
-
 	if lBackend, ok := d.executor.(*lambdaExecutor); ok {
 		lBackend.Deploy()
 	}
@@ -192,8 +193,14 @@ func (d *Driver) run() {
 		os.Exit(1)
 	}
 
-	d.runMapPhase()
-	d.runReducePhase()
+	for idx, job := range d.jobs {
+		if len(d.jobs) > 1 {
+			log.Info("Starting job %d (of %d)", idx, len(d.jobs))
+		}
+		job.config = d.config
+		d.runMapPhase(job)
+		d.runReducePhase(job)
+	}
 }
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")

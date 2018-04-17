@@ -26,6 +26,12 @@
   revision = "bb3d318650d48840a39aa21a027c6630e198e626"
 
 [[projects]]
+  name = "github.com/fsnotify/fsnotify"
+  packages = ["."]
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
+
+[[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
   revision = "ace140f73450505f33e8b8418216792275ae82a7"
@@ -38,9 +44,21 @@
   revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/hcl"
+  packages = [".","hcl/ast","hcl/parser","hcl/printer","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
+
+[[projects]]
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   revision = "0b12d6b5"
+
+[[projects]]
+  name = "github.com/magiconair/properties"
+  packages = ["."]
+  revision = "c3beff4c2358b44d0493c7dda585e7db7ff28ae6"
+  version = "v1.7.6"
 
 [[projects]]
   branch = "master"
@@ -55,6 +73,18 @@
   version = "v0.0.2"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
+
+[[projects]]
+  name = "github.com/pelletier/go-toml"
+  packages = ["."]
+  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
@@ -65,6 +95,36 @@
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
+
+[[projects]]
+  name = "github.com/spf13/afero"
+  packages = [".","mem"]
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/spf13/cast"
+  packages = ["."]
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/spf13/jwalterweatherman"
+  packages = ["."]
+  revision = "7c0cea34c8ece3fbeb2b27ab9b59511d360fb394"
+
+[[projects]]
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
+
+[[projects]]
+  name = "github.com/spf13/viper"
+  packages = ["."]
+  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -82,7 +142,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "61147c48b25b599e5b561d2e9c4f3e1ef489ca41"
+  revision = "8d16fa6dc9a85c1cd3ed24ad08ff21cf94f10888"
 
 [[projects]]
   branch = "master"
@@ -94,7 +154,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
-  revision = "2281fa97ef7b0c26324634d5a22f04babdac8713"
+  revision = "b126b21c05a91c856b027c16779c12e3bf236954"
+
+[[projects]]
+  name = "golang.org/x/text"
+  packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
@@ -102,9 +168,15 @@
   revision = "72b964305fba1230d3d818711138195f22b9ceea"
   version = "v1.0.22"
 
+[[projects]]
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9b63ebc4fe900dd2cbf9f0f6cfe20a0f376e7c41d0b178bbb060a9d13e463605"
+  inputs-digest = "d677439d3035e31c11242d7ceb2b019c3a3082512aea7f7210d1ccb3a8cf3e6e"
   solver-name = "gps-cdcl"
   solver-version = 1

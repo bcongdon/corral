@@ -15,6 +15,7 @@ const (
 // in a MapReduce job, as well as the necessary information for a
 // remote executor to initialize itself and begin working.
 type task struct {
+	JobNumber        int
 	Phase            Phase
 	BinID            uint
 	IntermediateBins uint

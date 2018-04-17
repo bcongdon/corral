@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	currentJob *Job
+	lambdaDriver *Driver
 )
 
 // runningInLambda infers if the program is running in AWS lambda via inspection of the environment
@@ -29,6 +29,7 @@ func runningInLambda() bool {
 
 func handleRequest(ctx context.Context, task task) (string, error) {
 	fs := corfs.InitFilesystem(task.FileSystemType)
+	currentJob := lambdaDriver.jobs[task.JobNumber]
 	currentJob.fileSystem = fs
 	currentJob.intermediateBins = task.IntermediateBins
 	currentJob.outputPath = task.WorkingLocation
