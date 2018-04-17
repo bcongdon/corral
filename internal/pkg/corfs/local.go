@@ -22,7 +22,7 @@ func walkDir(dir string) []FileInfo {
 			return nil
 		}
 		files = append(files, FileInfo{
-			Name: f.Name(),
+			Name: path,
 			Size: f.Size(),
 		})
 		return nil

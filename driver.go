@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"golang.org/x/sync/semaphore"
 
 	log "github.com/sirupsen/logrus"
@@ -38,13 +40,14 @@ type config struct {
 }
 
 func newConfig() *config {
+	loadConfig() // Load viper config from settings file(s) and environment
 	return &config{
 		Inputs:          []string{},
-		SplitSize:       100 * 1024 * 1024, // Default input split size is 100Mb
-		MapBinSize:      512 * 1024 * 1024, // Default map bin size is 512Mb
-		ReduceBinSize:   512 * 1024 * 1024, // Default reduce bin size is 512Mb
-		MaxConcurrency:  500,               // Maximum number of concurrent executors
-		WorkingLocation: ".",
+		SplitSize:       viper.GetInt64("split_size"),
+		MapBinSize:      viper.GetInt64("map_bin_size"),
+		ReduceBinSize:   viper.GetInt64("reduce_bin_size"),
+		MaxConcurrency:  viper.GetInt("max_concurrency"),
+		WorkingLocation: viper.GetString("working_location"),
 	}
 }
 
@@ -53,6 +56,8 @@ type Option func(*config)
 
 // NewDriver creates a new Driver with the provided job and optional configuration
 func NewDriver(job *Job, options ...Option) *Driver {
+	log.SetLevel(log.DebugLevel)
+
 	d := &Driver{
 		job:      job,
 		executor: localExecutor{},
@@ -69,6 +74,7 @@ func NewDriver(job *Job, options ...Option) *Driver {
 	}
 
 	d.config = c
+	log.Debugf("Loaded config: %#v", c)
 
 	return d
 }
@@ -193,7 +199,6 @@ var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
-	log.SetLevel(log.DebugLevel)
 	flag.Parse()
 
 	d.config.Inputs = append(d.config.Inputs, flag.Args()...)

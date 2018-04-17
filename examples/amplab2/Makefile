@@ -11,7 +11,7 @@ all: $(PROG_NAME)
 $(PROG_NAME):
 	go build -o $(BIN_DIR)/$@ .
 
-test_al1_local_tiny: $(PROG_NAME)
+test_al2_local_tiny: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) data/*
 
 tiny_data:
