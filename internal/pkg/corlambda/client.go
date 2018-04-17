@@ -22,7 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// MaxLambdaRetries is the number of times to try invoking a funciton
+// MaxLambdaRetries is the number of times to try invoking a function
 // before giving up and returning an error
 const MaxLambdaRetries = 3
 
