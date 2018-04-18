@@ -71,6 +71,14 @@ func (l *LocalFileSystem) OpenReader(filePath string, startAt int64) (io.ReadClo
 
 // OpenWriter opens a writer to the file at filePath.
 func (l *LocalFileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
+	dir := filepath.Dir(filePath)
+
+	// Create writer directory if necessary
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		os.MkdirAll(dir, 0777)
+	}
+
 	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 }
 

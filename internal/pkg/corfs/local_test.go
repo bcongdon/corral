@@ -105,3 +105,25 @@ func TestLocalStat(t *testing.T) {
 	assert.Equal(t, path, fInfo.Name)
 	assert.Equal(t, int64(3), fInfo.Size)
 }
+
+func TestCreateIntermediateDirectory(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "test")
+	defer os.RemoveAll(tmpdir)
+	assert.Nil(t, err)
+
+	path := path.Join(tmpdir, "additionalFolder", "tmpfile")
+
+	fs := LocalFileSystem{}
+
+	writer, err := fs.OpenWriter(path)
+	assert.Nil(t, err)
+
+	_, err = writer.Write([]byte("foo"))
+	assert.Nil(t, err)
+
+	assert.Nil(t, writer.Close())
+
+	stat, err := os.Stat(filepath.Join(tmpdir, "additionalFolder"))
+	assert.Nil(t, err)
+	assert.True(t, stat.IsDir())
+}
