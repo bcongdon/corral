@@ -123,10 +123,7 @@ func WithInputs(inputs ...string) Option {
 	}
 }
 
-func (d *Driver) runMapPhase(job *Job) {
-	job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
-	job.outputPath = d.config.WorkingLocation
-
+func (d *Driver) runMapPhase(job *Job, inputs []string) {
 	inputSplits := job.inputSplits(d.config.Inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
@@ -158,9 +155,6 @@ func (d *Driver) runMapPhase(job *Job) {
 }
 
 func (d *Driver) runReducePhase(job *Job) {
-	job.fileSystem = corfs.InferFilesystem(d.config.Inputs[0])
-	job.outputPath = d.config.WorkingLocation
-
 	var wg sync.WaitGroup
 	bar := pb.New(int(job.intermediateBins)).Prefix("Reduce").Start()
 	for binID := uint(0); binID < job.intermediateBins; binID++ {
@@ -193,13 +187,25 @@ func (d *Driver) run() {
 		os.Exit(1)
 	}
 
+	inputs := d.config.Inputs
 	for idx, job := range d.jobs {
-		if len(d.jobs) > 1 {
-			log.Info("Starting job %d (of %d)", idx, len(d.jobs))
+		// Initialize job filesystem
+		job.fileSystem = corfs.InferFilesystem(inputs[0])
+
+		jobWorkingLoc := d.config.WorkingLocation
+		log.Infof("Starting job %d of %d", idx, len(d.jobs))
+
+		if idx != len(d.jobs)-1 {
+			jobWorkingLoc = job.fileSystem.Join(jobWorkingLoc, fmt.Sprintf("job%d", idx))
 		}
-		job.config = d.config
-		d.runMapPhase(job)
+		job.outputPath = jobWorkingLoc
+
+		*job.config = *d.config
+		d.runMapPhase(job, inputs)
 		d.runReducePhase(job)
+
+		// Set inputs of next job to be outputs of current job
+		inputs = []string{job.fileSystem.Join(jobWorkingLoc, "output-*")}
 	}
 }
 

@@ -44,6 +44,24 @@ func (testWCJob) Reduce(key string, values ValueIterator, emitter Emitter) {
 	emitter.Emit(key, fmt.Sprintf("%d", count))
 }
 
+type testFilterJob struct {
+	prefix string
+}
+
+func (j *testFilterJob) Map(key, value string, emitter Emitter) {
+	if strings.HasPrefix(key, j.prefix) {
+		emitter.Emit(key, value)
+	}
+}
+
+func (j *testFilterJob) Reduce(key string, values ValueIterator, emitter Emitter) {
+	// Identity reducer
+	for value := range values.Iter() {
+		emitter.Emit(key, value)
+	}
+
+}
+
 func testOutputToKeyValues(output string) []keyValue {
 	lines := strings.Split(output, "\n")
 	keyVals := make([]keyValue, 0, len(lines))
@@ -105,8 +123,14 @@ func TestLocalMultiJob(t *testing.T) {
 	inputPath := filepath.Join(tmpdir, "test_input")
 	ioutil.WriteFile(inputPath, []byte("the test input\nthe input test\nfoo bar baz"), 0700)
 
-	job1 := NewJob(testWCJob{}, testWCJob{})
-	driver := NewMultiStageDriver([]*Job{job1},
+	mr1 := testWCJob{}
+	job1 := NewJob(mr1, mr1)
+
+	// Second job filters out any keys that don't start with 't'
+	mr2 := &testFilterJob{prefix: "t"}
+	job2 := NewJob(mr2, mr2)
+
+	driver := NewMultiStageDriver([]*Job{job1, job2},
 		WithInputs(tmpdir),
 		WithWorkingLocation(tmpdir),
 	)
@@ -117,15 +141,11 @@ func TestLocalMultiJob(t *testing.T) {
 	assert.Nil(t, err)
 
 	keyVals := testOutputToKeyValues(string(output))
-	assert.Len(t, keyVals, 6)
+	assert.Len(t, keyVals, 2)
 
 	correct := []keyValue{
 		{"the", "2"},
 		{"test", "2"},
-		{"input", "2"},
-		{"foo", "1"},
-		{"bar", "1"},
-		{"baz", "1"},
 	}
 	for _, kv := range correct {
 		assert.Contains(t, keyVals, kv)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
@@ -38,6 +39,19 @@ func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 	return emitter.close()
 }
 
+func splitInputRecord(record string) *keyValue {
+	fields := strings.Split(record, "\t")
+	if len(fields) == 2 {
+		return &keyValue{
+			Key:   fields[0],
+			Value: fields[1],
+		}
+	}
+	return &keyValue{
+		Value: record,
+	}
+}
+
 // runMapperSplit runs the mapper on a single inputSplit
 func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 	offset := split.StartOffset
@@ -61,7 +75,8 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 
 	for scanner.Scan() {
 		record := scanner.Text()
-		j.Map.Map("", record, emitter)
+		kv := splitInputRecord(record)
+		j.Map.Map(kv.Key, kv.Value, emitter)
 
 		// Stop reading when end of inputSplit is reached
 		pos := bytesRead
@@ -141,10 +156,6 @@ func (j *Job) runReducer(binID uint) error {
 		}(key, values)
 	}
 
-	// Close key channels to signal that all intermediate data has been read
-	// for _, keyChan := range keyChannels {
-	// 	close(keyChan)
-	// }
 	waitGroup.Wait()
 
 	return nil
@@ -194,5 +205,6 @@ func NewJob(mapper Mapper, reducer Reducer) *Job {
 	return &Job{
 		Map:    mapper,
 		Reduce: reducer,
+		config: &config{},
 	}
 }

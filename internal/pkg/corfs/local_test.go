@@ -106,7 +106,7 @@ func TestLocalStat(t *testing.T) {
 	assert.Equal(t, int64(3), fInfo.Size)
 }
 
-func TestCreateIntermediateDirectory(t *testing.T) {
+func TestLocalCreateIntermediateDirectory(t *testing.T) {
 	tmpdir, err := ioutil.TempDir("", "test")
 	defer os.RemoveAll(tmpdir)
 	assert.Nil(t, err)
@@ -126,4 +126,23 @@ func TestCreateIntermediateDirectory(t *testing.T) {
 	stat, err := os.Stat(filepath.Join(tmpdir, "additionalFolder"))
 	assert.Nil(t, err)
 	assert.True(t, stat.IsDir())
+}
+
+func TestLocalListGlob(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "test")
+	defer os.RemoveAll(tmpdir)
+	assert.Nil(t, err)
+
+	path := path.Join(tmpdir, "tmpfile")
+
+	ioutil.WriteFile(path, []byte("foo"), 0777)
+
+	fs := LocalFileSystem{}
+
+	files, err := fs.ListFiles(filepath.Join(tmpdir, "tmp*"))
+	assert.Nil(t, err)
+	assert.Len(t, files, 1)
+
+	assert.Equal(t, int64(3), files[0].Size)
+	assert.Equal(t, path, files[0].Name)
 }
