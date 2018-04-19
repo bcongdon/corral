@@ -19,7 +19,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bcongdon/corral/internal/pkg/corfs"
-	"github.com/bcongdon/corral/internal/pkg/corlambda"
 	"github.com/spf13/pflag"
 )
 
@@ -224,10 +223,7 @@ func (d *Driver) Main() {
 
 	d.config.Inputs = append(d.config.Inputs, flag.Args()...)
 	if *lambdaFlag {
-		d.executor = &lambdaExecutor{
-			corlambda.NewLambdaClient(),
-			viper.GetString("lambdaFunctionName"),
-		}
+		d.executor = newLambdaExecutor(viper.GetString("lambdaFunctionName"))
 	}
 	if *outputDir != "" {
 		d.config.WorkingLocation = *outputDir

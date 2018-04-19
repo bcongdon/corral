@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/aws/aws-sdk-go/service/lambda/lambdaiface"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,9 +30,10 @@ const MaxLambdaRetries = 3
 // LambdaClient wraps the AWS Lambda API and provides functions for
 // deploying and invoking lambda functions
 type LambdaClient struct {
-	client *lambda.Lambda
+	client lambdaiface.LambdaAPI
 }
 
+// FunctionConfig holds the configuration of an individual Lambda function
 type FunctionConfig struct {
 	Name       string
 	RoleARN    string

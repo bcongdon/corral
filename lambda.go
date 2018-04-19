@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
+	"github.com/bcongdon/corral/internal/pkg/coriam"
 	"github.com/bcongdon/corral/internal/pkg/corlambda"
 )
 
@@ -46,7 +47,16 @@ func handleRequest(ctx context.Context, task task) (string, error) {
 
 type lambdaExecutor struct {
 	*corlambda.LambdaClient
+	*coriam.IAMClient
 	functionName string
+}
+
+func newLambdaExecutor(functionName string) *lambdaExecutor {
+	return &lambdaExecutor{
+		LambdaClient: corlambda.NewLambdaClient(),
+		IAMClient:    coriam.NewIAMClient(),
+		functionName: functionName,
+	}
 }
 
 func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSplit) error {
@@ -84,11 +94,25 @@ func (l *lambdaExecutor) RunReducer(job *Job, binID uint) error {
 }
 
 func (l *lambdaExecutor) Deploy() {
+	var roleARN string
+	var err error
+	if viper.GetBool("lambdaManageRole") {
+		roleARN, err = l.DeployPermissions("CorralExecutionRole")
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		roleARN = viper.GetString("lambdaRoleARN")
+	}
+
 	config := &corlambda.FunctionConfig{
 		Name:       l.functionName,
-		RoleARN:    viper.GetString("lambdaRoleARN"),
+		RoleARN:    roleARN,
 		Timeout:    viper.GetInt64("lambdaTimeout"),
 		MemorySize: viper.GetInt64("lambdaMemory"),
 	}
-	l.DeployFunction(config)
+	err = l.DeployFunction(config)
+	if err != nil {
+		panic(err)
+	}
 }

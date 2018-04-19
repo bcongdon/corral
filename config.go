@@ -22,6 +22,7 @@ func setupDefaults() {
 		"lambdaFunctionName": "corral_function",
 		"lambdaMemory":       1500,
 		"lambdaTimeout":      180,
+		"lambdaManageRole":   true,
 		"cleanup":            false,
 		"verbose":            false,
 		"splitSize":          100 * 1024 * 1024, // Default input split size is 100Mb
