@@ -37,10 +37,10 @@ func handleRequest(ctx context.Context, task task) (string, error) {
 
 	if task.Phase == MapPhase {
 		err := currentJob.runMapper(task.BinID, task.Splits)
-		return fmt.Sprintf("%v", task), err
+		return fmt.Sprintf("Map Task %d of job %d", task.BinID, task.JobNumber), err
 	} else if task.Phase == ReducePhase {
 		err := currentJob.runReducer(task.BinID)
-		return fmt.Sprintf("%v", task), err
+		return fmt.Sprintf("Reduce Task %d of job %d", task.BinID, task.JobNumber), err
 	}
 	return "", fmt.Errorf("Unknown phase: %d", task.Phase)
 }

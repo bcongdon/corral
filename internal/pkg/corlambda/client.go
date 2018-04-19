@@ -30,7 +30,7 @@ const MaxLambdaRetries = 3
 // LambdaClient wraps the AWS Lambda API and provides functions for
 // deploying and invoking lambda functions
 type LambdaClient struct {
-	client lambdaiface.LambdaAPI
+	Client lambdaiface.LambdaAPI
 }
 
 // FunctionConfig holds the configuration of an individual Lambda function
@@ -47,7 +47,7 @@ func NewLambdaClient() *LambdaClient {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	return &LambdaClient{
-		client: lambda.New(sess),
+		Client: lambda.New(sess),
 	}
 }
 
@@ -70,7 +70,7 @@ func (l *LambdaClient) updateFunctionSettings(function *FunctionConfig) error {
 		Timeout:      aws.Int64(function.Timeout),
 		MemorySize:   aws.Int64(function.MemorySize),
 	}
-	_, err := l.client.UpdateFunctionConfiguration(params)
+	_, err := l.Client.UpdateFunctionConfiguration(params)
 	return err
 }
 
@@ -110,7 +110,7 @@ func (l *LambdaClient) DeleteFunction(functionName string) error {
 		FunctionName: aws.String(functionName),
 	}
 
-	_, err := l.client.DeleteFunction(deleteInput)
+	_, err := l.Client.DeleteFunction(deleteInput)
 	return err
 }
 
@@ -191,7 +191,7 @@ func (l *LambdaClient) updateFunction(function *FunctionConfig, code []byte) err
 		FunctionName: aws.String(function.Name),
 	}
 
-	_, err := l.client.UpdateFunctionCode(updateArgs)
+	_, err := l.Client.UpdateFunctionCode(updateArgs)
 	return err
 }
 
@@ -211,7 +211,7 @@ func (l *LambdaClient) createFunction(function *FunctionConfig, code []byte) err
 		MemorySize:   aws.Int64(function.MemorySize),
 	}
 
-	_, err := l.client.CreateFunction(createArgs)
+	_, err := l.Client.CreateFunction(createArgs)
 	return err
 }
 
@@ -220,7 +220,7 @@ func (l *LambdaClient) getFunction(functionName string) (*lambda.GetFunctionOutp
 		FunctionName: aws.String(functionName),
 	}
 
-	return l.client.GetFunction(getInput)
+	return l.Client.GetFunction(getInput)
 }
 
 type invokeError struct {
@@ -234,7 +234,7 @@ func (l *LambdaClient) tryInvoke(functionName string, payload []byte) ([]byte, e
 		Payload:      payload,
 	}
 
-	output, err := l.client.Invoke(invokeInput)
+	output, err := l.Client.Invoke(invokeInput)
 	if err != nil {
 		return nil, err
 	} else if output.FunctionError != nil {
