@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockLambda struct {
+type lambdaInvokerMock struct {
 	lambdaiface.LambdaAPI
 	invokeFailures int
 	outputPayload  []byte
 }
 
-func (m *mockLambda) Invoke(*lambda.InvokeInput) (*lambda.InvokeOutput, error) {
+func (m *lambdaInvokerMock) Invoke(*lambda.InvokeInput) (*lambda.InvokeOutput, error) {
 	if m.invokeFailures > 0 {
 		m.invokeFailures--
 		return &lambda.InvokeOutput{
@@ -28,6 +28,33 @@ func (m *mockLambda) Invoke(*lambda.InvokeInput) (*lambda.InvokeOutput, error) {
 	return &lambda.InvokeOutput{
 		Payload: m.outputPayload,
 	}, nil
+}
+
+type lambdaDeployMock struct {
+	lambdaiface.LambdaAPI
+	getFunctionOutput                 *lambda.GetFunctionOutput
+	capturedCreateFunctionInput       *lambda.CreateFunctionInput
+	capturedUpdateFunctionCodeInput   *lambda.UpdateFunctionCodeInput
+	capturedUpdateFunctionConfigInput *lambda.UpdateFunctionConfigurationInput
+}
+
+func (d *lambdaDeployMock) GetFunction(*lambda.GetFunctionInput) (*lambda.GetFunctionOutput, error) {
+	return d.getFunctionOutput, nil
+}
+
+func (d *lambdaDeployMock) CreateFunction(input *lambda.CreateFunctionInput) (*lambda.FunctionConfiguration, error) {
+	d.capturedCreateFunctionInput = input
+	return nil, nil
+}
+
+func (d *lambdaDeployMock) UpdateFunctionCode(input *lambda.UpdateFunctionCodeInput) (*lambda.FunctionConfiguration, error) {
+	d.capturedUpdateFunctionCodeInput = input
+	return nil, nil
+}
+
+func (d *lambdaDeployMock) UpdateFunctionConfiguration(input *lambda.UpdateFunctionConfigurationInput) (*lambda.FunctionConfiguration, error) {
+	d.capturedUpdateFunctionConfigInput = input
+	return nil, nil
 }
 
 func TestFunctionNeedsUpdate(t *testing.T) {
@@ -42,13 +69,9 @@ func TestFunctionNeedsUpdate(t *testing.T) {
 	assert.False(t, functionNeedsUpdate(functionCode, cfg))
 }
 
-func TestFunctionConfigNeedsUpdate(t *testing.T) {
-	// TODO:
-}
-
 func TestInvoke(t *testing.T) {
 	client := &LambdaClient{
-		&mockLambda{
+		&lambdaInvokerMock{
 			invokeFailures: 0,
 			outputPayload:  []byte("payload"),
 		},
@@ -62,7 +85,7 @@ func TestInvoke(t *testing.T) {
 
 func TestInvokeRetry(t *testing.T) {
 	client := &LambdaClient{
-		&mockLambda{
+		&lambdaInvokerMock{
 			invokeFailures: 2,
 			outputPayload:  []byte("payload"),
 		},
@@ -76,11 +99,64 @@ func TestInvokeRetry(t *testing.T) {
 
 func TestInvokeOutOfTries(t *testing.T) {
 	client := &LambdaClient{
-		&mockLambda{
+		&lambdaInvokerMock{
 			invokeFailures: MaxLambdaRetries + 1,
 		},
 	}
 
 	_, err := client.Invoke("function", []byte("payload"))
 	assert.NotNil(t, err)
+}
+
+func TestCreateFunction(t *testing.T) {
+	mock := &lambdaDeployMock{}
+	client := &LambdaClient{mock}
+
+	config := &FunctionConfig{
+		Name:       "test function",
+		RoleARN:    "testARN",
+		Timeout:    10,
+		MemorySize: 1000,
+	}
+
+	err := client.DeployFunction(config)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "test function", *mock.capturedCreateFunctionInput.FunctionName)
+	assert.Equal(t, "testARN", *mock.capturedCreateFunctionInput.Role)
+	assert.Equal(t, int64(10), *mock.capturedCreateFunctionInput.Timeout)
+	assert.Equal(t, int64(1000), *mock.capturedCreateFunctionInput.MemorySize)
+}
+
+func TestUpdateFunction(t *testing.T) {
+	mock := &lambdaDeployMock{
+		getFunctionOutput: &lambda.GetFunctionOutput{
+			Configuration: &lambda.FunctionConfiguration{
+				CodeSha256: aws.String("sha"),
+				Role:       aws.String("wrongARN"),
+				Timeout:    aws.Int64(10),
+				MemorySize: aws.Int64(1000),
+			},
+		},
+	}
+	client := &LambdaClient{mock}
+
+	config := &FunctionConfig{
+		Name:       "test function",
+		RoleARN:    "testARN",
+		Timeout:    10,
+		MemorySize: 1000,
+	}
+
+	err := client.DeployFunction(config)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput)
+	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput.ZipFile)
+	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput)
+	assert.Equal(t, "testARN", *mock.capturedUpdateFunctionConfigInput.Role)
+}
+
+func TestNoUpdateRequired(t *testing.T) {
+	// TODO:
 }
