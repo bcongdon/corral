@@ -164,8 +164,6 @@ func (j *Job) runReducer(binID uint) error {
 // inputSplits calculates all input files' inputSplits.
 // inputSplits also determines and saves the number of intermediate bins that will be used during the shuffle.
 func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
-	splits := make([]inputSplit, 0)
-
 	files := make([]string, 0)
 	for _, inputPath := range inputs {
 		fileInfos, err := j.fileSystem.ListFiles(inputPath)
@@ -179,6 +177,7 @@ func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 		}
 	}
 
+	splits := make([]inputSplit, 0)
 	var totalSize int64
 	for _, inputFileName := range files {
 		fInfo, err := j.fileSystem.Stat(inputFileName)

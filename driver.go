@@ -81,6 +81,7 @@ func NewDriver(job *Job, options ...Option) *Driver {
 	return d
 }
 
+// NewMultiStageDriver creates a new Driver with the provided jobs and optional configuration
 func NewMultiStageDriver(jobs []*Job, options ...Option) *Driver {
 	driver := NewDriver(nil, options...)
 	driver.jobs = jobs
@@ -123,7 +124,7 @@ func WithInputs(inputs ...string) Option {
 }
 
 func (d *Driver) runMapPhase(job *Job, inputs []string) {
-	inputSplits := job.inputSplits(d.config.Inputs, d.config.SplitSize)
+	inputSplits := job.inputSplits(inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
 		os.Exit(0)
@@ -192,7 +193,7 @@ func (d *Driver) run() {
 		job.fileSystem = corfs.InferFilesystem(inputs[0])
 
 		jobWorkingLoc := d.config.WorkingLocation
-		log.Infof("Starting job %d of %d", idx, len(d.jobs))
+		log.Infof("Starting job%d (%d/%d)", idx, idx+1, len(d.jobs))
 
 		if idx != len(d.jobs)-1 {
 			jobWorkingLoc = job.fileSystem.Join(jobWorkingLoc, fmt.Sprintf("job%d", idx))
