@@ -6,6 +6,11 @@ AMPLAB_PATH = big-data-benchmark/pavlo/text
 
 .PHONY: all clean $(PROG_NAME) input_in_s3
 
+.EXPORT_ALL_VARIABLES:
+CORRAL_VERBOSE=true
+CORRAL_LAMBDAMEMORY=3000
+CORRAL_LAMBDATIMEOUT=180
+
 all: $(PROG_NAME)
 
 $(PROG_NAME):
@@ -27,10 +32,11 @@ test_al3_lambda_1node: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/1node/uservisits/part-* s3://$(AMPLAB_PATH)/1node/rankings/part-*
 
 test_al3_lambda_5node: $(PROG_NAME)
-	.$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/uservisits/part-* s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
+	env
+	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/uservisits/part-* s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
 
 clean:
 	find . -name "*.out" -print0 | xargs -0 rm
 	rm -f $(BIN_DIR)/$(PROG_NAME) output*
-	rm -r job0
+	rm -rf job0
 	aws s3 rm s3://${BUCKET} --recursive

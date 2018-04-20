@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bcongdon/corral"
 )
@@ -12,12 +13,9 @@ import (
 type amplab3Join struct{}
 type amplab3Aggregate struct{}
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
+const dateFormat = "2006-01-02"
+
+var cutoffDate, _ = time.Parse(dateFormat, "2000-01-01")
 
 const (
 	rankingType = iota
@@ -53,7 +51,13 @@ func (a amplab3Join) Map(key, value string, emitter corral.Emitter) {
 			AdRevenue:  adRevenue,
 			SourceIP:   fields[0],
 		}
-		emitRecord(visit.DestURL, visit, emitter)
+		date, err := time.Parse(dateFormat, fields[2])
+		if err != nil {
+			fmt.Println(err)
+		}
+		if date.Before(cutoffDate) {
+			emitRecord(visit.DestURL, visit, emitter)
+		}
 	default:
 		fmt.Printf("Invalid record: '%s'\n", value)
 		return
@@ -116,6 +120,9 @@ func main() {
 	job1 := corral.NewJob(amplab3Join{}, amplab3Join{})
 	job2 := corral.NewJob(amplab3Aggregate{}, amplab3Aggregate{})
 
-	driver := corral.NewMultiStageDriver([]*corral.Job{job1, job2})
+	driver := corral.NewMultiStageDriver(
+		[]*corral.Job{job1, job2},
+		corral.WithMapBinSize(250*1024*1024),
+	)
 	driver.Main()
 }
