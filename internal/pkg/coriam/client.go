@@ -30,6 +30,13 @@ const AssumePolicyDocument = `{
 const AttachPolicyDocument = `{
     "Version": "2012-10-17",
     "Statement": [
+		{
+            "Effect": "Allow",
+            "Action": [
+                "logs:*"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
         {
             "Effect": "Allow",
             "Action": [

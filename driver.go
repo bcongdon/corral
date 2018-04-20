@@ -123,7 +123,7 @@ func WithInputs(inputs ...string) Option {
 	}
 }
 
-func (d *Driver) runMapPhase(job *Job, inputs []string) {
+func (d *Driver) runMapPhase(job *Job, jobNumber int, inputs []string) {
 	inputSplits := job.inputSplits(inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
@@ -144,7 +144,7 @@ func (d *Driver) runMapPhase(job *Job, inputs []string) {
 			defer wg.Done()
 			defer sem.Release(1)
 			defer bar.Increment()
-			err := d.executor.RunMapper(job, bID, b)
+			err := d.executor.RunMapper(job, jobNumber, bID, b)
 			if err != nil {
 				log.Errorf("Error when running mapper %d: %s", bID, err)
 			}
@@ -154,7 +154,7 @@ func (d *Driver) runMapPhase(job *Job, inputs []string) {
 	bar.Finish()
 }
 
-func (d *Driver) runReducePhase(job *Job) {
+func (d *Driver) runReducePhase(job *Job, jobNumber int) {
 	var wg sync.WaitGroup
 	bar := pb.New(int(job.intermediateBins)).Prefix("Reduce").Start()
 	for binID := uint(0); binID < job.intermediateBins; binID++ {
@@ -162,7 +162,7 @@ func (d *Driver) runReducePhase(job *Job) {
 		go func(bID uint) {
 			defer wg.Done()
 			defer bar.Increment()
-			err := d.executor.RunReducer(job, bID)
+			err := d.executor.RunReducer(job, jobNumber, bID)
 			if err != nil {
 				log.Errorf("Error when running reducer %d: %s", bID, err)
 			}
@@ -195,14 +195,14 @@ func (d *Driver) run() {
 		jobWorkingLoc := d.config.WorkingLocation
 		log.Infof("Starting job%d (%d/%d)", idx, idx+1, len(d.jobs))
 
-		if idx != len(d.jobs)-1 {
+		if len(d.jobs) > 1 {
 			jobWorkingLoc = job.fileSystem.Join(jobWorkingLoc, fmt.Sprintf("job%d", idx))
 		}
 		job.outputPath = jobWorkingLoc
 
 		*job.config = *d.config
-		d.runMapPhase(job, inputs)
-		d.runReducePhase(job)
+		d.runMapPhase(job, idx, inputs)
+		d.runReducePhase(job, idx)
 
 		// Set inputs of next job to be outputs of current job
 		inputs = []string{job.fileSystem.Join(jobWorkingLoc, "output-*")}

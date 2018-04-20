@@ -137,7 +137,7 @@ func TestLocalMultiJob(t *testing.T) {
 
 	driver.Main()
 
-	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "output-part-0"))
+	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "job1", "output-part-0"))
 	assert.Nil(t, err)
 
 	keyVals := testOutputToKeyValues(string(output))

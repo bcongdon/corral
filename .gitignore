@@ -18,3 +18,4 @@ vendor/
 *.gif
 bin/
 output-*
+coverage.txt

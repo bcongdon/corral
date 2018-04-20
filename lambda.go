@@ -59,14 +59,15 @@ func newLambdaExecutor(functionName string) *lambdaExecutor {
 	}
 }
 
-func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSplit) error {
+func (l *lambdaExecutor) RunMapper(job *Job, jobNumber int, binID uint, inputSplits []inputSplit) error {
 	mapTask := task{
+		JobNumber:        jobNumber,
 		Phase:            MapPhase,
 		BinID:            binID,
 		Splits:           inputSplits,
 		IntermediateBins: job.intermediateBins,
 		FileSystemType:   corfs.S3,
-		WorkingLocation:  job.config.WorkingLocation,
+		WorkingLocation:  job.outputPath,
 	}
 	payload, err := json.Marshal(mapTask)
 	if err != nil {
@@ -77,12 +78,13 @@ func (l *lambdaExecutor) RunMapper(job *Job, binID uint, inputSplits []inputSpli
 	return err
 }
 
-func (l *lambdaExecutor) RunReducer(job *Job, binID uint) error {
+func (l *lambdaExecutor) RunReducer(job *Job, jobNumber int, binID uint) error {
 	mapTask := task{
+		JobNumber:       jobNumber,
 		Phase:           ReducePhase,
 		BinID:           binID,
 		FileSystemType:  corfs.S3,
-		WorkingLocation: job.config.WorkingLocation,
+		WorkingLocation: job.outputPath,
 	}
 	payload, err := json.Marshal(mapTask)
 	if err != nil {
