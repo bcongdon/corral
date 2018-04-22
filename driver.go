@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/spf13/viper"
 
 	"golang.org/x/sync/semaphore"
@@ -206,6 +208,9 @@ func (d *Driver) run() {
 
 		// Set inputs of next job to be outputs of current job
 		inputs = []string{job.fileSystem.Join(jobWorkingLoc, "output-*")}
+
+		log.Infof("Job %d - Total Bytes Read:\t%s", idx, humanize.Bytes(uint64(job.bytesRead)))
+		log.Infof("Job %d - Total Bytes Written:\t%s", idx, humanize.Bytes(uint64(job.bytesWritten)))
 	}
 }
 

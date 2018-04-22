@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"sync/atomic"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
@@ -28,6 +31,16 @@ func runningInLambda() bool {
 	return true
 }
 
+func prepareResult(job *Job) string {
+	result := taskResult{
+		BytesRead:    int(job.bytesRead),
+		BytesWritten: int(job.bytesWritten),
+	}
+
+	payload, _ := json.Marshal(result)
+	return string(payload)
+}
+
 func handleRequest(ctx context.Context, task task) (string, error) {
 	fs := corfs.InitFilesystem(task.FileSystemType)
 	currentJob := lambdaDriver.jobs[task.JobNumber]
@@ -35,12 +48,16 @@ func handleRequest(ctx context.Context, task task) (string, error) {
 	currentJob.intermediateBins = task.IntermediateBins
 	currentJob.outputPath = task.WorkingLocation
 
+	// Need to reset job counters in case this is a reused lambda
+	currentJob.bytesRead = 0
+	currentJob.bytesWritten = 0
+
 	if task.Phase == MapPhase {
 		err := currentJob.runMapper(task.BinID, task.Splits)
-		return fmt.Sprintf("Map Task %d of job %d", task.BinID, task.JobNumber), err
+		return prepareResult(currentJob), err
 	} else if task.Phase == ReducePhase {
 		err := currentJob.runReducer(task.BinID)
-		return fmt.Sprintf("Reduce Task %d of job %d", task.BinID, task.JobNumber), err
+		return prepareResult(currentJob), err
 	}
 	return "", fmt.Errorf("Unknown phase: %d", task.Phase)
 }
@@ -59,6 +76,18 @@ func newLambdaExecutor(functionName string) *lambdaExecutor {
 	}
 }
 
+func loadTaskResult(payload []byte) taskResult {
+	// Unescape JSON string
+	payloadStr, _ := strconv.Unquote(string(payload))
+
+	var result taskResult
+	err := json.Unmarshal([]byte(payloadStr), &result)
+	if err != nil {
+		log.Errorf("%s", err)
+	}
+	return result
+}
+
 func (l *lambdaExecutor) RunMapper(job *Job, jobNumber int, binID uint, inputSplits []inputSplit) error {
 	mapTask := task{
 		JobNumber:        jobNumber,
@@ -74,7 +103,12 @@ func (l *lambdaExecutor) RunMapper(job *Job, jobNumber int, binID uint, inputSpl
 		return err
 	}
 
-	_, err = l.Invoke(l.functionName, payload)
+	resultPayload, err := l.Invoke(l.functionName, payload)
+	taskResult := loadTaskResult(resultPayload)
+
+	atomic.AddInt64(&job.bytesRead, int64(taskResult.BytesRead))
+	atomic.AddInt64(&job.bytesWritten, int64(taskResult.BytesWritten))
+
 	return err
 }
 
@@ -91,7 +125,12 @@ func (l *lambdaExecutor) RunReducer(job *Job, jobNumber int, binID uint) error {
 		return err
 	}
 
-	_, err = l.Invoke(l.functionName, payload)
+	resultPayload, err := l.Invoke(l.functionName, payload)
+	taskResult := loadTaskResult(resultPayload)
+
+	atomic.AddInt64(&job.bytesRead, int64(taskResult.BytesRead))
+	atomic.AddInt64(&job.bytesWritten, int64(taskResult.BytesWritten))
+
 	return err
 }
 

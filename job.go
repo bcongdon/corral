@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
 	humanize "github.com/dustin/go-humanize"
@@ -23,6 +24,9 @@ type Job struct {
 	config           *config
 	intermediateBins uint
 	outputPath       string
+
+	bytesRead    int64
+	bytesWritten int64
 }
 
 // Logic for running a single map task
@@ -35,6 +39,8 @@ func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 			return err
 		}
 	}
+
+	atomic.AddInt64(&j.bytesWritten, emitter.bytesWritten())
 
 	return emitter.close()
 }
@@ -85,6 +91,8 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 		}
 	}
 
+	atomic.AddInt64(&j.bytesRead, bytesRead)
+
 	return nil
 }
 
@@ -106,9 +114,11 @@ func (j *Job) runReducer(binID uint) error {
 	}
 
 	data := make(map[string][]string, 0)
+	var bytesRead int64
 
 	for _, file := range files {
 		reader, err := j.fileSystem.OpenReader(file.Name, 0)
+		bytesRead += file.Size
 		if err != nil {
 			return err
 		}
@@ -157,6 +167,9 @@ func (j *Job) runReducer(binID uint) error {
 	}
 
 	waitGroup.Wait()
+
+	atomic.AddInt64(&j.bytesWritten, emitter.bytesWritten())
+	atomic.AddInt64(&j.bytesRead, bytesRead)
 
 	return nil
 }

@@ -41,16 +41,21 @@ func TestHandleRequest(t *testing.T) {
 	}
 
 	job := &Job{}
+
+	// These values should be reset to 0 by Lambda handler function
+	job.bytesRead = 10
+	job.bytesWritten = 20
+
 	lambdaDriver = NewDriver(job)
 
 	output, err := handleRequest(context.Background(), testTask)
 	assert.Nil(t, err)
-	assert.Equal(t, "Map Task 0 of job 0", output)
+	assert.Equal(t, "{\"BytesRead\":0,\"BytesWritten\":0}", output)
 
 	testTask.Phase = ReducePhase
 	output, err = handleRequest(context.Background(), testTask)
 	assert.Nil(t, err)
-	assert.Equal(t, "Reduce Task 0 of job 0", output)
+	assert.Equal(t, "{\"BytesRead\":0,\"BytesWritten\":0}", output)
 }
 
 type mockLambdaClient struct {

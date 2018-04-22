@@ -17,12 +17,14 @@ import (
 type Emitter interface {
 	Emit(key, value string) error
 	close() error
+	bytesWritten() int64
 }
 
 // reducerEmitter is a threadsafe emitter.
 type reducerEmitter struct {
-	writer io.WriteCloser
-	mut    *sync.Mutex
+	writer       io.WriteCloser
+	mut          *sync.Mutex
+	writtenBytes int64
 }
 
 // newReducerEmitter initializes and returns a new reducerEmitter
@@ -38,7 +40,8 @@ func (e *reducerEmitter) Emit(key, value string) error {
 	e.mut.Lock()
 	defer e.mut.Unlock()
 
-	_, err := e.writer.Write([]byte(fmt.Sprintf("%s\t%s\n", key, value)))
+	n, err := e.writer.Write([]byte(fmt.Sprintf("%s\t%s\n", key, value)))
+	e.writtenBytes += int64(n)
 	return err
 }
 
@@ -47,15 +50,20 @@ func (e *reducerEmitter) close() error {
 	return e.writer.Close()
 }
 
+func (e *reducerEmitter) bytesWritten() int64 {
+	return e.writtenBytes
+}
+
 // mapperEmitter is an emitter that partitions keys written to it.
 // mapperEmitter maintains a map of writers. Keys are partitioned into one of numBins
 // intermediate "shuffle" bins. Each bin is written as a separate file.
 type mapperEmitter struct {
-	numBins  uint                    // number of intermediate shuffle bins
-	writers  map[uint]io.WriteCloser // maps a parition number to an open writer
-	fs       corfs.FileSystem        // filesystem to use when opening writers
-	mapperID uint                    // numeric identifier of the mapper using this emitter
-	outDir   string                  // folder to save map output to
+	numBins      uint                    // number of intermediate shuffle bins
+	writers      map[uint]io.WriteCloser // maps a parition number to an open writer
+	fs           corfs.FileSystem        // filesystem to use when opening writers
+	mapperID     uint                    // numeric identifier of the mapper using this emitter
+	outDir       string                  // folder to save map output to
+	writtenBytes int64
 }
 
 // Initializes a new mapperEmitter
@@ -123,4 +131,8 @@ func (me *mapperEmitter) close() error {
 	}
 
 	return nil
+}
+
+func (me *mapperEmitter) bytesWritten() int64 {
+	return me.writtenBytes
 }

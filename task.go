@@ -1,6 +1,8 @@
 package corral
 
-import "github.com/bcongdon/corral/internal/pkg/corfs"
+import (
+	"github.com/bcongdon/corral/internal/pkg/corfs"
+)
 
 // Phase is a descriptor of the phase (i.e. Map or Reduce) of a Job
 type Phase int
@@ -22,4 +24,9 @@ type task struct {
 	Splits           []inputSplit
 	FileSystemType   corfs.FileSystemType
 	WorkingLocation  string
+}
+
+type taskResult struct {
+	BytesRead    int
+	BytesWritten int
 }

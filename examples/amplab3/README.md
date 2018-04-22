@@ -1,4 +1,4 @@
-# Amplab 2 Example
+# Amplab 3 Example
 
 ## Benchmark Results
 
