@@ -22,6 +22,7 @@ const (
 	visitType
 )
 
+// Record holds joined data for "UserVisit" and "Ranking" record types
 type Record struct {
 	RecordType int
 	PageURL    string
@@ -31,6 +32,8 @@ type Record struct {
 	SourceIP   string
 }
 
+// Map receives input lines from both "UserVisit" and "Ranking" datasets.
+// It parses the line into a record. It filters by visit date (in the case of "UserVisit").
 func (a amplab3Join) Map(key, value string, emitter corral.Emitter) {
 	fields := strings.Split(value, ",")
 

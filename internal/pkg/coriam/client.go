@@ -7,10 +7,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// IAMClient manages deploying IAM credentials for corral
 type IAMClient struct {
 	*iam.IAM
 }
 
+// AssumePolicyDocument is the policy document used in the role that coriam creates
 const AssumePolicyDocument = `{
   "Version": "2012-10-17",
   "Statement": [
@@ -27,6 +29,7 @@ const AssumePolicyDocument = `{
   ]
 }`
 
+// AttachPolicyDocument is the policy document used in the policy that coriam attaches to the created role
 const AttachPolicyDocument = `{
     "Version": "2012-10-17",
     "Statement": [
@@ -72,6 +75,8 @@ const AttachPolicyDocument = `{
 
 const corralPolicyName = "corral-permissions"
 
+// deployRole creates/updates the role with the given name so that it has the policy
+// document that coriam defines (AssumePolicyDocument).
 func (iamClient *IAMClient) deployRole(roleName string) (roleARN string, err error) {
 	getParams := &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
@@ -96,6 +101,8 @@ func (iamClient *IAMClient) deployRole(roleName string) (roleARN string, err err
 	return *role.Role.Arn, err
 }
 
+// deployRole creates/updates the role with the given name so that it an
+// attached inline policy that matches AttachPolicyDocument
 func (iamClient *IAMClient) deployPolicy(roleName string) error {
 	getParams := &iam.GetRolePolicyInput{
 		RoleName:   aws.String(roleName),
@@ -121,6 +128,9 @@ func (iamClient *IAMClient) deployPolicy(roleName string) error {
 	return err
 }
 
+// DeployPermissions creates/updates IAM permissions for corral lambda functions.
+// It creates/updates an IAM role and inline policy to allow corral lambda functions
+// to access S3, invoke lambda functions, and write logs to CloudWatch.
 func (iamClient *IAMClient) DeployPermissions(roleName string) (roleARN string, err error) {
 	roleARN, err = iamClient.deployRole(roleName)
 	if err != nil {

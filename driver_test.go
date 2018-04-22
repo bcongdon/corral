@@ -38,7 +38,7 @@ func (testWCJob) Map(key, value string, emitter Emitter) {
 
 func (testWCJob) Reduce(key string, values ValueIterator, emitter Emitter) {
 	count := 0
-	for _ = range values.Iter() {
+	for range values.Iter() {
 		count++
 	}
 	emitter.Emit(key, fmt.Sprintf("%d", count))

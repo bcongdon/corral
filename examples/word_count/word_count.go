@@ -28,7 +28,7 @@ func (w wordCount) Map(key, value string, emitter corral.Emitter) {
 
 func (w wordCount) Reduce(key string, values corral.ValueIterator, emitter corral.Emitter) {
 	count := 0
-	for _ = range values.Iter() {
+	for range values.Iter() {
 		count++
 	}
 	emitter.Emit(key, strconv.Itoa(count))
