@@ -2,7 +2,6 @@ package corral
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"runtime"
@@ -21,7 +20,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bcongdon/corral/internal/pkg/corfs"
-	"github.com/spf13/pflag"
+	flag "github.com/spf13/pflag"
 )
 
 // Driver controls the execution of a MapReduce Job
@@ -42,11 +41,12 @@ type config struct {
 }
 
 func newConfig() *config {
-	// Register command line flags
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	viper.BindPFlags(pflag.CommandLine)
-
 	loadConfig() // Load viper config from settings file(s) and environment
+
+	// Register command line flags
+	flag.Parse()
+	viper.BindPFlags(flag.CommandLine)
+
 	return &config{
 		Inputs:          []string{},
 		SplitSize:       viper.GetInt64("splitSize"),
@@ -215,15 +215,14 @@ func (d *Driver) run() {
 }
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
-var outputDir = flag.String("out", "", "Output `directory` (can be local or in S3)")
+var outputDir = flag.StringP("out", "o", "", "Output `directory` (can be local or in S3)")
 var memprofile = flag.String("memprofile", "", "Write memory profile to `file`")
-var verbose = flag.Bool("verbose", false, "Output verbose logs")
+var verbose = flag.BoolP("verbose", "v", false, "Output verbose logs")
 
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
 func (d *Driver) Main() {
-	flag.Parse()
-	if *verbose {
+	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)
 	}
 

@@ -23,17 +23,17 @@ tiny_data:
 	aws s3 cp --recursive ./data/ s3://${BUCKET}
 
 test_al3_s3_tiny: $(PROG_NAME) tiny_data
-	$(BIN_DIR)/$(PROG_NAME) -out s3://${BUCKET} s3://${BUCKET}/rankings/ s3://${BUCKET}/visits/
+	$(BIN_DIR)/$(PROG_NAME) --out s3://${BUCKET} s3://${BUCKET}/rankings/ s3://${BUCKET}/visits/
 
 test_al3_lambda_tiny: $(PROG_NAME) tiny_data
-	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://${BUCKET}/rankings/ s3://${BUCKET}/visits/
+	$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://${BUCKET}/rankings/ s3://${BUCKET}/visits/
 
 test_al3_lambda_1node: $(PROG_NAME)
-	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/1node/uservisits/part-* s3://$(AMPLAB_PATH)/1node/rankings/part-*
+	$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://$(AMPLAB_PATH)/1node/uservisits/part-* s3://$(AMPLAB_PATH)/1node/rankings/part-*
 
 test_al3_lambda_5node: $(PROG_NAME)
 	env
-	$(BIN_DIR)/$(PROG_NAME) -lambda -out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/uservisits/part-* s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
+	$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/uservisits/part-* s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
 
 clean:
 	find . -name "*.out" -print0 | xargs -0 rm
