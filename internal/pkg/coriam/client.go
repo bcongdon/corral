@@ -4,12 +4,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	log "github.com/sirupsen/logrus"
 )
 
 // IAMClient manages deploying IAM credentials for corral
 type IAMClient struct {
-	*iam.IAM
+	iamiface.IAMAPI
 }
 
 // AssumePolicyDocument is the policy document used in the role that coriam creates
@@ -75,20 +76,7 @@ const AttachPolicyDocument = `{
 
 const corralPolicyName = "corral-permissions"
 
-// deployRole creates/updates the role with the given name so that it has the policy
-// document that coriam defines (AssumePolicyDocument).
-func (iamClient *IAMClient) deployRole(roleName string) (roleARN string, err error) {
-	getParams := &iam.GetRoleInput{
-		RoleName: aws.String(roleName),
-	}
-	exists, err := iamClient.GetRole(getParams)
-
-	// Role already exists
-	if exists != nil && err == nil {
-		log.Debugf("IAM Role '%s' already exists", roleName)
-		return *exists.Role.Arn, nil
-	}
-
+func (iamClient *IAMClient) createRole(roleName string) (roleARN string, err error) {
 	createParams := &iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(AssumePolicyDocument),
 		RoleName:                 aws.String(roleName),
@@ -99,6 +87,50 @@ func (iamClient *IAMClient) deployRole(roleName string) (roleARN string, err err
 		return "", err
 	}
 	return *role.Role.Arn, err
+}
+
+func (iamClient *IAMClient) updateAssumeRolePolicy(roleName string) error {
+	updateParams := &iam.UpdateAssumeRolePolicyInput{
+		PolicyDocument: aws.String(AssumePolicyDocument),
+		RoleName:       aws.String(roleName),
+	}
+	log.Debugf("Updating IAM role '%s'", roleName)
+	_, err := iamClient.UpdateAssumeRolePolicy(updateParams)
+
+	return err
+}
+
+// deployRole creates/updates the role with the given name so that it has the policy
+// document that coriam defines (AssumePolicyDocument).
+func (iamClient *IAMClient) deployRole(roleName string) (roleARN string, err error) {
+	getParams := &iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	}
+	exists, err := iamClient.GetRole(getParams)
+
+	// Role already exists
+	if exists != nil && err == nil {
+		if *exists.Role.AssumeRolePolicyDocument != AssumePolicyDocument {
+			err = iamClient.updateAssumeRolePolicy(roleName)
+			return *exists.Role.Arn, err
+		}
+		log.Debugf("IAM Role '%s' already exists", roleName)
+		return *exists.Role.Arn, nil
+	}
+
+	return iamClient.createRole(roleName)
+}
+
+func (iamClient *IAMClient) putAttachPolicy(roleName string) error {
+	createParams := &iam.PutRolePolicyInput{
+		PolicyName:     aws.String(corralPolicyName),
+		PolicyDocument: aws.String(AttachPolicyDocument),
+		RoleName:       aws.String(roleName),
+	}
+
+	log.Debugf("Putting policy '%s'", *createParams.PolicyName)
+	_, err := iamClient.PutRolePolicy(createParams)
+	return err
 }
 
 // deployRole creates/updates the role with the given name so that it an
@@ -113,19 +145,14 @@ func (iamClient *IAMClient) deployPolicy(roleName string) error {
 
 	// Policy already exists
 	if exists != nil && err == nil {
+		if *exists.PolicyDocument != AttachPolicyDocument {
+			return iamClient.putAttachPolicy(roleName)
+		}
 		log.Debugf("Policy '%s' already exists", *exists.PolicyName)
 		return nil
 	}
 
-	createParams := &iam.PutRolePolicyInput{
-		PolicyName:     aws.String(corralPolicyName),
-		PolicyDocument: aws.String(AttachPolicyDocument),
-		RoleName:       aws.String(roleName),
-	}
-
-	log.Debugf("Creating policy '%s'", *createParams.PolicyName)
-	_, err = iamClient.PutRolePolicy(createParams)
-	return err
+	return iamClient.putAttachPolicy(roleName)
 }
 
 // DeployPermissions creates/updates IAM permissions for corral lambda functions.

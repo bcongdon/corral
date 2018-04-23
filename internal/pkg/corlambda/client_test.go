@@ -156,7 +156,3 @@ func TestUpdateFunction(t *testing.T) {
 	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput)
 	assert.Equal(t, "testARN", *mock.capturedUpdateFunctionConfigInput.Role)
 }
-
-func TestNoUpdateRequired(t *testing.T) {
-	// TODO:
-}
