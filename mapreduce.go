@@ -28,6 +28,11 @@ type Reducer interface {
 	Reduce(key string, values ValueIterator, emitter Emitter)
 }
 
+// PartitionFunc defines a function that can be used to segment map keys into intermediate buckets.
+// The default partition function simply hashes the key, and takes hash % numBins to determine the bin.
+// The value returned from PartitionFunc (binIdx) must be in the range 0 <= binIdx < numBins, i.e. [0, numBins)
+type PartitionFunc func(key string, numBins uint) (binIdx uint)
+
 // keyValue is used to store intermediate shuffle data as key-value pairs
 type keyValue struct {
 	Key   string `json:"key"`

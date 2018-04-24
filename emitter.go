@@ -58,35 +58,37 @@ func (e *reducerEmitter) bytesWritten() int64 {
 // mapperEmitter maintains a map of writers. Keys are partitioned into one of numBins
 // intermediate "shuffle" bins. Each bin is written as a separate file.
 type mapperEmitter struct {
-	numBins      uint                    // number of intermediate shuffle bins
-	writers      map[uint]io.WriteCloser // maps a parition number to an open writer
-	fs           corfs.FileSystem        // filesystem to use when opening writers
-	mapperID     uint                    // numeric identifier of the mapper using this emitter
-	outDir       string                  // folder to save map output to
-	writtenBytes int64
+	numBins       uint                    // number of intermediate shuffle bins
+	writers       map[uint]io.WriteCloser // maps a parition number to an open writer
+	fs            corfs.FileSystem        // filesystem to use when opening writers
+	mapperID      uint                    // numeric identifier of the mapper using this emitter
+	outDir        string                  // folder to save map output to
+	partitionFunc PartitionFunc           // PartitionFunc to use when partitioning map output keys into intermediate bins
+	writtenBytes  int64                   // counter for number of bytes written from emitted key/val pairs
 }
 
 // Initializes a new mapperEmitter
 func newMapperEmitter(numBins uint, mapperID uint, outDir string, fs corfs.FileSystem) mapperEmitter {
 	return mapperEmitter{
-		numBins:  numBins,
-		writers:  make(map[uint]io.WriteCloser, numBins),
-		fs:       fs,
-		mapperID: mapperID,
-		outDir:   outDir,
+		numBins:       numBins,
+		writers:       make(map[uint]io.WriteCloser, numBins),
+		fs:            fs,
+		mapperID:      mapperID,
+		outDir:        outDir,
+		partitionFunc: hashPartition,
 	}
 }
 
-// keyToBin partitions a key to one of numBins shuffle bins
-func (me *mapperEmitter) keyToBin(key string) uint {
+// hashPartition partitions a key to one of numBins shuffle bins
+func hashPartition(key string, numBins uint) uint {
 	h := fnv.New64()
 	h.Write([]byte(key))
-	return uint(h.Sum64() % uint64(me.numBins))
+	return uint(h.Sum64() % uint64(numBins))
 }
 
 // Emit yields a key-value pair to the framework.
 func (me *mapperEmitter) Emit(key, value string) error {
-	bin := me.keyToBin(key)
+	bin := me.partitionFunc(key, me.numBins)
 
 	// Open writer for the bin, if necessary
 	writer, exists := me.writers[bin]

@@ -17,8 +17,9 @@ import (
 
 // Job is the logical container for a MapReduce job
 type Job struct {
-	Map    Mapper
-	Reduce Reducer
+	Map           Mapper
+	Reduce        Reducer
+	PartitionFunc PartitionFunc
 
 	fileSystem       corfs.FileSystem
 	config           *config
