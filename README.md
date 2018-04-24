@@ -5,7 +5,9 @@
 [![codecov](https://codecov.io/gh/bcongdon/corral/branch/master/graph/badge.svg)](https://codecov.io/gh/bcongdon/corral)
 [![GoDoc](https://godoc.org/github.com/bcongdon/corral?status.svg)](https://godoc.org/github.com/bcongdon/corral)
 
-(Nothing to see here yet...)
+<p align="center">
+    <img src="logo.svg" width="50%"/>
+</p>
 
 ## Examples
 
@@ -70,3 +72,4 @@ More comprehensive examples can be found in [the examples folder](https://github
     - TODO:
 - [mrjob](https://github.com/Yelp/mrjob)
     - TODO:
+- Logo: [Fence by Vitaliy Gorbachev from the Noun Project](https://thenounproject.com/search/?q=fence&i=1291185)
