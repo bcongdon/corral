@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 
@@ -110,8 +111,12 @@ func (l *LambdaClient) DeleteFunction(functionName string) error {
 		FunctionName: aws.String(functionName),
 	}
 
+	log.Debugf("Deleting function '%s'", functionName)
 	_, err := l.Client.DeleteFunction(deleteInput)
-	return err
+	if err != nil && !strings.HasPrefix(err.Error(), lambda.ErrCodeResourceNotFoundException) {
+		return err
+	}
+	return nil
 }
 
 // crossCompile builds the current directory as a lambda package.

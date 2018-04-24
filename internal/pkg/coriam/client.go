@@ -1,6 +1,8 @@
 package coriam
 
 import (
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -167,6 +169,28 @@ func (iamClient *IAMClient) DeployPermissions(roleName string) (roleARN string, 
 	err = iamClient.deployPolicy(roleName)
 
 	return roleARN, err
+}
+
+func (iamClient *IAMClient) DeletePermissions(roleName string) error {
+	log.Debugf("Deleting role policy")
+	deletePolicyParams := &iam.DeleteRolePolicyInput{
+		RoleName:   aws.String(roleName),
+		PolicyName: aws.String(corralPolicyName),
+	}
+	_, err := iamClient.DeleteRolePolicy(deletePolicyParams)
+	if err != nil && !strings.HasPrefix(err.Error(), iam.ErrCodeNoSuchEntityException) {
+		return err
+	}
+
+	log.Debugf("Deleting role")
+	deleteRoleParams := &iam.DeleteRoleInput{
+		RoleName: aws.String(roleName),
+	}
+	_, err = iamClient.DeleteRole(deleteRoleParams)
+	if err != nil && !strings.HasPrefix(err.Error(), iam.ErrCodeNoSuchEntityException) {
+		return err
+	}
+	return nil
 }
 
 // NewIAMClient initializes a new IAMClient

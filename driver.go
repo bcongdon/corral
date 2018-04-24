@@ -218,6 +218,7 @@ var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
 var outputDir = flag.StringP("out", "o", "", "Output `directory` (can be local or in S3)")
 var memprofile = flag.String("memprofile", "", "Write memory profile to `file`")
 var verbose = flag.BoolP("verbose", "v", false, "Output verbose logs")
+var undeploy = flag.Bool("undeploy", false, "Undeploy the Lambda function and IAM permissions without running the driver")
 
 // Main starts the Driver.
 // TODO: more information about backends, config, etc.
@@ -226,10 +227,17 @@ func (d *Driver) Main() {
 		log.SetLevel(log.DebugLevel)
 	}
 
+	if *undeploy {
+		lambda := newLambdaExecutor(viper.GetString("lambdaFunctionName"))
+		lambda.Undeploy()
+		return
+	}
+
 	d.config.Inputs = append(d.config.Inputs, flag.Args()...)
 	if *lambdaFlag {
 		d.executor = newLambdaExecutor(viper.GetString("lambdaFunctionName"))
 	}
+
 	if *outputDir != "" {
 		d.config.WorkingLocation = *outputDir
 	}

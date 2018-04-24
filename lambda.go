@@ -20,6 +20,9 @@ var (
 	lambdaDriver *Driver
 )
 
+// corralRoleName is the name to use when deploying an IAM role
+const corralRoleName = "CorralExecutionRole"
+
 // runningInLambda infers if the program is running in AWS lambda via inspection of the environment
 func runningInLambda() bool {
 	expectedEnvVars := []string{"LAMBDA_TASK_ROOT", "AWS_EXECUTION_ENV", "LAMBDA_RUNTIME_DIR"}
@@ -138,7 +141,7 @@ func (l *lambdaExecutor) Deploy() {
 	var roleARN string
 	var err error
 	if viper.GetBool("lambdaManageRole") {
-		roleARN, err = l.DeployPermissions("CorralExecutionRole")
+		roleARN, err = l.DeployPermissions(corralRoleName)
 		if err != nil {
 			panic(err)
 		}
@@ -155,5 +158,19 @@ func (l *lambdaExecutor) Deploy() {
 	err = l.DeployFunction(config)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func (l *lambdaExecutor) Undeploy() {
+	log.Info("Undeploying function")
+	err := l.LambdaClient.DeleteFunction(l.functionName)
+	if err != nil {
+		log.Errorf("Error when undeploying function: %s", err)
+	}
+
+	log.Info("Undeploying IAM Permissions")
+	err = l.IAMClient.DeletePermissions(corralRoleName)
+	if err != nil {
+		log.Errorf("Error when undeploying IAM permissions: %s", err)
 	}
 }
