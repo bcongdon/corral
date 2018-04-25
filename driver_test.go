@@ -151,3 +151,14 @@ func TestLocalMultiJob(t *testing.T) {
 		assert.Contains(t, keyVals, kv)
 	}
 }
+
+func TestLocalNoCrashOnNoResolvedInputFiles(t *testing.T) {
+	job := NewJob(testWCJob{}, testWCJob{})
+	driver := NewDriver(
+		job,
+		WithInputs("does_not_exist"),
+		WithWorkingLocation("some_file"),
+	)
+
+	driver.Main()
+}

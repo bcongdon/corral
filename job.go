@@ -203,7 +203,9 @@ func (j *Job) inputSplits(inputs []string, maxSplitSize int64) []inputSplit {
 		totalSize += fInfo.Size
 		splits = append(splits, splitInputFile(fInfo, maxSplitSize)...)
 	}
-	log.Debugf("Average split size: %s bytes", humanize.Bytes(uint64(totalSize)/uint64(len(splits))))
+	if len(files) > 0 {
+		log.Debugf("Average split size: %s bytes", humanize.Bytes(uint64(totalSize)/uint64(len(splits))))
+	}
 
 	j.intermediateBins = uint(float64(totalSize/j.config.ReduceBinSize) * 1.25)
 	if j.intermediateBins == 0 {
