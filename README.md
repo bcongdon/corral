@@ -24,7 +24,7 @@ Corral is best suited for data-intensive but computationally inexpensive tasks, 
 
 ## Examples
 
-Every good MapReduce framework needs a WordCount™ example. Here's how to write word count in corral:
+Every good MapReduce framework needs a WordCount™ example. Here's how to write a "word count" in corral:
 
 ```golang
 type wordCount struct{}
@@ -44,7 +44,7 @@ func (w wordCount) Reduce(key string, values corral.ValueIterator, emitter corra
 }
 
 func main() {
-    wc := wordCount{}
+	wc := wordCount{}
 	job := corral.NewJob(wc, wc)
 
 	driver := corral.NewDriver(job)
@@ -95,6 +95,29 @@ In short, setup credentials in `.aws/credentials` as one would with any other AW
 ## Configuration
 
 ## Architecture
+
+## Contributing
+
+Contributions to corral are more than welcomed! In general, the preference is to discuss potential changes in the issues before changes are made.
+
+More information is included in the [CONTRIBUTING.md](CONTRIBUTING.md)
+
+### Running Tests
+
+To run tests, run the following command in the root project directory:
+
+```
+go test ./...
+```
+
+Note that some tests (i.e. the tests of `corfs`) require AWS credentials to be present.
+
+The main corral has TravisCI setup. If you fork this repo, you can enable TravisCI on your fork. You will need to set the following environment variables for all the tests to work:
+
+* `AWS_ACCESS_KEY_ID`: Credentials access key
+* `AWS_SECRET_ACCESS_KEY`: Credentials secret key
+* `AWS_DEFAULT_REGION`: Region to use for S3 tests
+* `AWS_TEST_BUCKET`: The S3 bucket to use for tests (just the name; i.e. `testBucket` instead of `s3://testBucket`)
 
 ## License
 
