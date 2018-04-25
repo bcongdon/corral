@@ -125,3 +125,31 @@ func TestMapperEmitter(t *testing.T) {
 
 	assert.Nil(t, emitter.close())
 }
+
+func TestMapperEmitterCustomPartition(t *testing.T) {
+	mFs := &mockFs{writers: make(map[string]*testWriteCloser)}
+	var fs corfs.FileSystem = mFs
+	emitter := newMapperEmitter(3, 0, "out", fs)
+	emitter.partitionFunc = func(key string, numBuckets uint) uint {
+		if strings.HasPrefix(key, "a") {
+			return 0
+		}
+		return numBuckets - 1
+	}
+
+	err := emitter.Emit("a", "val1")
+	assert.Nil(t, err)
+
+	err = emitter.Emit("a", "val2")
+	assert.Nil(t, err)
+
+	err = emitter.Emit("b", "val3")
+	assert.Nil(t, err)
+
+	assert.Len(t, mFs.writers, 2)
+
+	assert.Equal(t, `{"key":"a","value":"val1"}`+"\n"+`{"key":"a","value":"val2"}`+"\n", string(mFs.writers["out/map-bin0-0.out"].Bytes()))
+	assert.Equal(t, `{"key":"b","value":"val3"}`+"\n", string(mFs.writers["out/map-bin2-0.out"].Bytes()))
+
+	assert.Nil(t, emitter.close())
+}

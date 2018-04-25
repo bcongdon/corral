@@ -33,6 +33,9 @@ type Job struct {
 // Logic for running a single map task
 func (j *Job) runMapper(mapperID uint, splits []inputSplit) error {
 	emitter := newMapperEmitter(j.intermediateBins, mapperID, j.outputPath, j.fileSystem)
+	if j.PartitionFunc != nil {
+		emitter.partitionFunc = j.PartitionFunc
+	}
 
 	for _, split := range splits {
 		err := j.runMapperSplit(split, &emitter)
