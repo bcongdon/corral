@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync/atomic"
 
@@ -45,6 +46,10 @@ func prepareResult(job *Job) string {
 }
 
 func handleRequest(ctx context.Context, task task) (string, error) {
+	// Precaution to avoid running out of memory for reused Lambdas
+	debug.FreeOSMemory()
+
+	// Setup current job
 	fs := corfs.InitFilesystem(task.FileSystemType)
 	currentJob := lambdaDriver.jobs[task.JobNumber]
 	currentJob.fileSystem = fs

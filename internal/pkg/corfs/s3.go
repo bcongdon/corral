@@ -132,12 +132,14 @@ func (s *S3FileSystem) OpenWriter(filePath string) (io.WriteCloser, error) {
 	}
 
 	writer := &s3Writer{
-		client: s.s3Client,
-		bucket: parsed.Hostname(),
-		key:    parsed.Path,
-		buf:    filebuffer.New(nil),
+		client:         s.s3Client,
+		bucket:         parsed.Hostname(),
+		key:            parsed.Path,
+		buf:            filebuffer.New(nil),
+		complatedParts: []*s3.CompletedPart{},
 	}
-	return writer, nil
+	err = writer.Init()
+	return writer, err
 }
 
 // Stat returns information about the file at filePath.
