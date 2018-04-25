@@ -20,6 +20,8 @@ type iamMock struct {
 	capturedUpdateAssumeRolePolicyInput *iam.UpdateAssumeRolePolicyInput
 	capturedGetRolePolicyInput          *iam.GetRolePolicyInput
 	capturedPutRolePolicyInput          *iam.PutRolePolicyInput
+	capturedDeleteRolePolicyInput       *iam.DeleteRolePolicyInput
+	capturedDeleteRoleInput             *iam.DeleteRoleInput
 }
 
 func (i *iamMock) GetRole(input *iam.GetRoleInput) (*iam.GetRoleOutput, error) {
@@ -63,6 +65,16 @@ func (i *iamMock) GetRolePolicy(input *iam.GetRolePolicyInput) (*iam.GetRolePoli
 
 func (i *iamMock) PutRolePolicy(input *iam.PutRolePolicyInput) (*iam.PutRolePolicyOutput, error) {
 	i.capturedPutRolePolicyInput = input
+	return nil, nil
+}
+
+func (i *iamMock) DeleteRolePolicy(input *iam.DeleteRolePolicyInput) (*iam.DeleteRolePolicyOutput, error) {
+	i.capturedDeleteRolePolicyInput = input
+	return nil, nil
+}
+
+func (i *iamMock) DeleteRole(input *iam.DeleteRoleInput) (*iam.DeleteRoleOutput, error) {
+	i.capturedDeleteRoleInput = input
 	return nil, nil
 }
 
@@ -139,4 +151,17 @@ func TestDeployPermissions(t *testing.T) {
 	assert.Equal(t, "role", *mock.capturedGetRolePolicyInput.RoleName)
 	assert.Equal(t, "corral-permissions", *mock.capturedGetRolePolicyInput.PolicyName)
 	assert.Equal(t, AttachPolicyDocument, *mock.capturedPutRolePolicyInput.PolicyDocument)
+}
+
+func TestDeletePermissions(t *testing.T) {
+	mock := &iamMock{}
+	client := IAMClient{mock}
+
+	err := client.DeletePermissions("testRole")
+	assert.Nil(t, err)
+
+	assert.Equal(t, "testRole", *mock.capturedDeleteRolePolicyInput.RoleName)
+	assert.Equal(t, "corral-permissions", *mock.capturedDeleteRolePolicyInput.PolicyName)
+
+	assert.Equal(t, "testRole", *mock.capturedDeleteRoleInput.RoleName)
 }

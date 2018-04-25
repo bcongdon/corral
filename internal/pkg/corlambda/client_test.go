@@ -36,6 +36,7 @@ type lambdaDeployMock struct {
 	capturedCreateFunctionInput       *lambda.CreateFunctionInput
 	capturedUpdateFunctionCodeInput   *lambda.UpdateFunctionCodeInput
 	capturedUpdateFunctionConfigInput *lambda.UpdateFunctionConfigurationInput
+	capturedDeleteFunctionInput       *lambda.DeleteFunctionInput
 }
 
 func (d *lambdaDeployMock) GetFunction(*lambda.GetFunctionInput) (*lambda.GetFunctionOutput, error) {
@@ -54,6 +55,11 @@ func (d *lambdaDeployMock) UpdateFunctionCode(input *lambda.UpdateFunctionCodeIn
 
 func (d *lambdaDeployMock) UpdateFunctionConfiguration(input *lambda.UpdateFunctionConfigurationInput) (*lambda.FunctionConfiguration, error) {
 	d.capturedUpdateFunctionConfigInput = input
+	return nil, nil
+}
+
+func (d *lambdaDeployMock) DeleteFunction(input *lambda.DeleteFunctionInput) (*lambda.DeleteFunctionOutput, error) {
+	d.capturedDeleteFunctionInput = input
 	return nil, nil
 }
 
@@ -155,4 +161,15 @@ func TestUpdateFunction(t *testing.T) {
 	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput.ZipFile)
 	assert.NotNil(t, mock.capturedUpdateFunctionCodeInput)
 	assert.Equal(t, "testARN", *mock.capturedUpdateFunctionConfigInput.Role)
+}
+
+func TestDeleteFunction(t *testing.T) {
+	mock := &lambdaDeployMock{}
+
+	client := &LambdaClient{mock}
+
+	err := client.DeleteFunction("function")
+	assert.Nil(t, err)
+
+	assert.Equal(t, "function", *mock.capturedDeleteFunctionInput.FunctionName)
 }
