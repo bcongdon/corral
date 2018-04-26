@@ -94,6 +94,60 @@ In short, setup credentials in `.aws/credentials` as one would with any other AW
 
 ## Configuration
 
+There are a number of ways to specify configuraiton for corral applications. To hard-code configuration, there are a variety of [Options](https://godoc.org/github.com/bcongdon/corral#Option) that may be used when instantiating a Job.
+
+Configuration values are used in the order, with priority given to whichever location is set first:
+
+1. Hard-coded job [Options](https://godoc.org/github.com/bcongdon/corral#Option).
+1. Command line flags
+1. Environment variables
+1. Configuration file
+1. Default values
+
+### Configuration Settings
+
+Below are the config settings that may be changed. 
+
+#### Framework Settings
+* `splitSize` (int64) - The maximum size (in bytes) of any single file input split. (Default: 100Mb)
+* `mapBinSize` (int64) - The maximum size (in bytes) of the combined input size to a mapper. (Default: 512Mb)
+* `reduceBinSize` (int64) - The maximum size (in bytes) of the combined input size to a reducer. This is an "expected" maximum, assuming uniform key distribution. (Default: 512Mb)
+* `maxConcurrency` (int) - The maximum number of executors (local, Lambda, or otherwise) that may run concurrently. (Default: `100`)
+* `workingLocation` (string) - The location (local or S3) to use for writing intermediate and output data.
+* `verbose` (bool) - Enables debug logging if set to `true`
+
+#### Lambda Settings
+* `lambdaFunctionName` (string) - The name to use for created Lambda functions. (Default: `corral_function`)
+* `lambdaManageRole` (bool) - Whether corral should manage creating an IAM role for Lambda execution. (Default: `true`)
+* `lambdaRoleARN` (string) - If `lambdaManageRole` is disabled, the ARN specified in `lambdaRoleARN` is used as the Lambda function's executor role.
+* `lambdaTimeout` (int64) - The timeout (maximum function duration) in seconds of created Lambda functions. See [AWS lambda docs](https://docs.aws.amazon.com/lambda/latest/dg/resource-model.html) for details. (Default: `180`)
+* `lambdaMemory` (int64) - The maximum memory that a Lambda function may use. See [AWS lambda docs](https://docs.aws.amazon.com/lambda/latest/dg/resource-model.html) for details. (Default: `1500`)
+
+### Command Line Flags
+
+The following flags are available at runtime as command-line flags:
+```
+      --lambda            Use lambda backend
+      --memprofile file   Write memory profile to file
+  -o, --out directory     Output directory (can be local or in S3)
+      --undeploy          Undeploy the Lambda function and IAM permissions without running the driver
+  -v, --verbose           Output verbose logs
+```
+
+### Environment Variables
+
+Corral leverages [Viper](https://github.com/spf13/viper) for specifying config. Any of the above configuration settings can be set as environment variables by upper-casing the setting name, and prepending `CORRAL_`.
+
+For example, `lambdaFunctionName` can be configured using an env var by setting `CORRAL_LAMBDAFUNCTIONNAME`.
+
+### Config Files
+
+Corral will read settings from a file called `corralrc`. Corral checks to see if this file exists in the current directory (`.`). It can also read global settings from `$HOME/.corral/corralrc`.
+
+Reference the "Configuration Settings" section for the configuration keys that may be used.
+
+Config files can be in JSON, YAML, or TOML format. See [Viper](https://github.com/spf13/viper) for more details.
+
 ## Architecture
 
 ## Contributing
@@ -129,7 +183,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
     - Uses a "recursive" style reducer instead of parallel reducers
     - Requires that all reducer output can fit in memory of a single lambda function
 - [mrjob](https://github.com/Yelp/mrjob)
-    - TODO:
+    - Excellent Python library for writing MapReduce jobs for Hadoop, EMR/Dataproc, and others
 - [dmrgo](https://github.com/dgryski/dmrgo)
-    - TODO:
+    - mrjob-inspired Go MapReduce library
 - Logo: [Fence by Vitaliy Gorbachev from the Noun Project](https://thenounproject.com/search/?q=fence&i=1291185)
