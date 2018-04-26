@@ -38,6 +38,7 @@ type config struct {
 	ReduceBinSize   int64
 	MaxConcurrency  int
 	WorkingLocation string
+	Cleanup         bool
 }
 
 func newConfig() *config {
@@ -54,6 +55,7 @@ func newConfig() *config {
 		ReduceBinSize:   viper.GetInt64("reduceBinSize"),
 		MaxConcurrency:  viper.GetInt("maxConcurrency"),
 		WorkingLocation: viper.GetString("workingLocation"),
+		Cleanup:         viper.GetBool("cleanup"),
 	}
 }
 

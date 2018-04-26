@@ -55,6 +55,7 @@ func handleRequest(ctx context.Context, task task) (string, error) {
 	currentJob.fileSystem = fs
 	currentJob.intermediateBins = task.IntermediateBins
 	currentJob.outputPath = task.WorkingLocation
+	currentJob.config.Cleanup = task.Cleanup
 
 	// Need to reset job counters in case this is a reused lambda
 	currentJob.bytesRead = 0
@@ -127,6 +128,7 @@ func (l *lambdaExecutor) RunReducer(job *Job, jobNumber int, binID uint) error {
 		BinID:           binID,
 		FileSystemType:  corfs.S3,
 		WorkingLocation: job.outputPath,
+		Cleanup:         job.config.Cleanup,
 	}
 	payload, err := json.Marshal(mapTask)
 	if err != nil {

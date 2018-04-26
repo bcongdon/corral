@@ -24,6 +24,7 @@ type task struct {
 	Splits           []inputSplit
 	FileSystemType   corfs.FileSystemType
 	WorkingLocation  string
+	Cleanup          bool
 }
 
 type taskResult struct {

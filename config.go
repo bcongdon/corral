@@ -23,7 +23,7 @@ func setupDefaults() {
 		"lambdaMemory":       1500,
 		"lambdaTimeout":      180,
 		"lambdaManageRole":   true,
-		"cleanup":            false,
+		"cleanup":            true,
 		"verbose":            false,
 		"splitSize":          100 * 1024 * 1024, // Default input split size is 100Mb
 		"mapBinSize":         512 * 1024 * 1024, // Default map bin size is 512Mb

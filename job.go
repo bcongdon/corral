@@ -142,6 +142,14 @@ func (j *Job) runReducer(binID uint) error {
 			data[kv.Key] = append(data[kv.Key], kv.Value)
 		}
 		reader.Close()
+
+		// Delete intermediate map data
+		if j.config.Cleanup {
+			err := j.fileSystem.Delete(file.Name)
+			if err != nil {
+				log.Error(err)
+			}
+		}
 	}
 
 	var waitGroup sync.WaitGroup
