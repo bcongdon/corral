@@ -201,9 +201,17 @@ Mappers may maintain state if desired (though not encouraged).
 
 ### Partition / Shuffle
 
-Records emitted from a Mapper are partitioned by key. 
+Key/value pairs emitted during the map stage are written to intermediate files. Keys are partitioned into one `N` buckets, where `N` is the number of reducers. As a result, each mapper may write to as many as `N` separate files.
+
+This results in a set of files labeled `map-binX-Y` where `X` is a number between 0 and N-1, and `Y` is the mapper's ID (a number between 0 and the number of mappers).
 
 ### Reducers / Output
+
+Currently, reducer input must be able to fit in memory. This is because keys are only partitioned, not sorted. The reducer performs an in-memory per-key partition.
+
+Reducers receive per-key values in an arbitrary order. It is guaranteed that all values for a given key will be provided in a single call to Reduce by-key.
+
+Values emitted from a reducer will be stored in tab separated format (i.e. `KEY\tVALUE`) in files labeled `output-X` where `X` is the reducer's ID (a number between 0 and the number of reducers).
 
 Reducers may maintain state if desired (though not encouraged).
 

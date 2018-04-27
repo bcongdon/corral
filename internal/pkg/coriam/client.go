@@ -171,6 +171,7 @@ func (iamClient *IAMClient) DeployPermissions(roleName string) (roleARN string, 
 	return roleARN, err
 }
 
+// DeletePermissions deletes corral's IA role policy and IAM role.
 func (iamClient *IAMClient) DeletePermissions(roleName string) error {
 	log.Debugf("Deleting role policy")
 	deletePolicyParams := &iam.DeleteRolePolicyInput{
