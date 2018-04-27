@@ -62,7 +62,7 @@ By default, job output will be stored relative to the current directory.
 
 We can also input/output to S3 by pointing to an S3 bucket/files for input/output:
 ```
-go run word_count.go s3://my-input-bucket/* --out s3://my-output-bucket/
+go run word_count.go --out s3://my-output-bucket/ s3://my-input-bucket/*
 ```
 
 More comprehensive examples can be found in [the examples folder](https://github.com/bcongdon/corral/tree/master/examples).
