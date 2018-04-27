@@ -14,6 +14,14 @@ Please note we have a code of conduct, please follow it in all your interactions
 1. Create a PR that has a descriptive name and comprehensive description of the changes made.
 1. You may merge the Pull Request in once you receive approval on the PR.
 
+## Updating the README
+
+The corral README uses [doctoc](https://github.com/thlorenz/doctoc) to generate the table of contents. If you change the heading structure of the README, please rerun doctoc:
+
+```
+doctoc README.md --github
+```
+
 ## Code of Conduct
 
 ### Our Pledge

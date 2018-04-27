@@ -22,6 +22,35 @@ but corral is modular enough that support for other serverless platforms can be 
 
 Corral is best suited for data-intensive but computationally inexpensive tasks, such as ETL jobs.
 
+
+**Contents:**
+---
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Examples](#examples)
+- [Deploying in Lambda](#deploying-in-lambda)
+  - [AWS Credentials](#aws-credentials)
+- [Configuration](#configuration)
+  - [Configuration Settings](#configuration-settings)
+    - [Framework Settings](#framework-settings)
+    - [Lambda Settings](#lambda-settings)
+  - [Command Line Flags](#command-line-flags)
+  - [Environment Variables](#environment-variables)
+  - [Config Files](#config-files)
+- [Architecture](#architecture)
+  - [Input Files / Splits](#input-files--splits)
+  - [Mappers](#mappers)
+  - [Partition / Shuffle](#partition--shuffle)
+  - [Reducers / Output](#reducers--output)
+- [Contributing](#contributing)
+  - [Running Tests](#running-tests)
+- [License](#license)
+- [Previous Work / Attributions](#previous-work--attributions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Examples
 
 Every good MapReduce framework needs a WordCount™ example. Here's how to write a "word count" in corral:
@@ -214,4 +243,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
     - Excellent Python library for writing MapReduce jobs for Hadoop, EMR/Dataproc, and others
 - [dmrgo](https://github.com/dgryski/dmrgo)
     - mrjob-inspired Go MapReduce library
+- [Zappa](https://github.com/Miserlou/Zappa)
+	- Serverless Python toolkit. Inspired much of the way that corral does automatic Lambda deployment
 - Logo: [Fence by Vitaliy Gorbachev from the Noun Project](https://thenounproject.com/search/?q=fence&i=1291185)
