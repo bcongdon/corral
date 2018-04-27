@@ -222,8 +222,7 @@ var memprofile = flag.String("memprofile", "", "Write memory profile to `file`")
 var verbose = flag.BoolP("verbose", "v", false, "Output verbose logs")
 var undeploy = flag.Bool("undeploy", false, "Undeploy the Lambda function and IAM permissions without running the driver")
 
-// Main starts the Driver.
-// TODO: more information about backends, config, etc.
+// Main starts the Driver, running the submitted jobs.
 func (d *Driver) Main() {
 	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)

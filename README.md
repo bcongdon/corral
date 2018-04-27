@@ -8,7 +8,7 @@
 [![GoDoc](https://godoc.org/github.com/bcongdon/corral?status.svg)](https://godoc.org/github.com/bcongdon/corral)
 
 <p align="center">
-    <img src="logo.svg" width="50%"/>
+    <img src="img/logo.svg" width="50%"/>
 </p>
 
 **[WIP] This project is still very much a work-in-progress**
@@ -149,6 +149,34 @@ Reference the "Configuration Settings" section for the configuration keys that m
 Config files can be in JSON, YAML, or TOML format. See [Viper](https://github.com/spf13/viper) for more details.
 
 ## Architecture
+
+Below is a high-level diagram describing the MapReduce architecture corral uses.
+
+<p align="center">
+    <img src="img/architecture.svg" width="80%"/>
+</p>
+
+### Input Files / Splits
+
+Input files are split byte-wise into contiguous chunks of maximum size `splitSize`. These splits are packed into "input bins" of maximum size `mapBinSize`. The bin packing algorithm tries to assign contiguous chunks of a single file to the same mapper, but this behavior is not guaranteed.
+
+There is a one-to-one correspondance between an "input bin" and the data that a mapper reads. i.e. Each mapper is assigned to process exactly 1 input bin. For jobs that run on Lambda, you should tune `mapBinSize`, `splitSize`, and `lambdaTimeout` accordingly so that mappers are able to process their entire input before timing out.
+
+Input data is stramed into the mapper, so the entire input data needn't fit in memory.
+
+### Mappers
+
+Input data is fed into the map function line-by-line. Input splits are calculated byte-wise, but this is rectified during the Map phase into a logical split "by line" (to prevent partial reads, or the loss of records that span input splits).
+
+Mappers may maintain state if desired (though not encouraged).
+
+### Partition / Shuffle
+
+Records emitted from a Mapper are partitioned by key. 
+
+### Reducers / Output
+
+Reducers may maintain state if desired (though not encouraged).
 
 ## Contributing
 
