@@ -98,6 +98,10 @@ More comprehensive examples can be found in [the examples folder](https://github
 
 ## Deploying in Lambda
 
+<p align="center">
+    <img src="img/word_count.gif" width="100%"/>
+</p>
+
 No formal deployment step needs run to deploy a corral application to Lambda. Instead, add the `--lambda` flag to an invocation of a corral app, and the project code will be automatically recompiled for Lambda and uploaded.
 
 For example, 
