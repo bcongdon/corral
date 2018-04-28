@@ -40,7 +40,9 @@ func TestHandleRequest(t *testing.T) {
 		WorkingLocation:  ".",
 	}
 
-	job := &Job{}
+	job := &Job{
+		config: &config{},
+	}
 
 	// These values should be reset to 0 by Lambda handler function
 	job.bytesRead = 10

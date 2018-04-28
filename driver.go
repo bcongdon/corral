@@ -131,7 +131,7 @@ func (d *Driver) runMapPhase(job *Job, jobNumber int, inputs []string) {
 	inputSplits := job.inputSplits(inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
-		os.Exit(0)
+		return
 	}
 	log.Debugf("Number of job input splits: %d", len(inputSplits))
 
@@ -188,7 +188,7 @@ func (d *Driver) run() {
 
 	if len(d.config.Inputs) == 0 {
 		log.Error("No inputs!")
-		os.Exit(1)
+		return
 	}
 
 	inputs := d.config.Inputs
