@@ -11,8 +11,6 @@
     <img src="img/logo.svg" width="50%"/>
 </p>
 
-**[WIP] This project is still very much a work-in-progress**
-
 Corral is a MapReduce framework designed to be deployed to serverless platforms, like [AWS Lambda](https://aws.amazon.com/lambda/).
 It presents a lightweight alternative to Hadoop MapReduce. Much of the design philosophy was inspired by Yelp's [mrjob](https://pythonhosted.org/mrjob/) --
 corral retains mrjob's ease-of-use while gaining the type safety and speed of Go.
