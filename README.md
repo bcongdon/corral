@@ -20,6 +20,7 @@ but corral is modular enough that support for other serverless platforms can be 
 
 Corral is best suited for data-intensive but computationally inexpensive tasks, such as ETL jobs.
 
+More details about corral's internals can be found in [this blog post](https://benjamincongdon.me/blog/2018/05/02/Introducing-Corral-A-Serverless-MapReduce-Framework/).
 
 **Contents:**
 ---
