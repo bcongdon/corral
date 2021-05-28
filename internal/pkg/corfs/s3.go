@@ -31,6 +31,8 @@ type S3FileSystem struct {
 	objectCache *lru.Cache
 }
 
+var _ FileSystem = &S3FileSystem{}
+
 func parseS3URI(uri string) (*url.URL, error) {
 	parsed, err := url.Parse(uri)
 

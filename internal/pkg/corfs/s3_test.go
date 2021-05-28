@@ -37,14 +37,6 @@ func cleanup(backend *S3FileSystem, t *testing.T) {
 	}
 }
 
-func TestS3ImplementsFileSystem(t *testing.T) {
-	backend := S3FileSystem{}
-	var fileSystem FileSystem
-	fileSystem = &backend
-
-	assert.NotNil(t, fileSystem)
-}
-
 func TestS3ReaderWriter(t *testing.T) {
 	bucket, backend := getS3TestBackend(t)
 	defer cleanup(backend, t)
