@@ -11,15 +11,17 @@ import (
 )
 
 func getS3TestBackend(t *testing.T) (string, *S3FileSystem) {
+	t.Helper()
+
 	backend := &S3FileSystem{}
 
 	bucket := os.Getenv("AWS_TEST_BUCKET")
 	if bucket == "" {
-		t.Fatal("No test bucket is set under $AWS_TEST_BUCKET")
+		t.Skipf("No test bucket is set under $AWS_TEST_BUCKET")
 	}
 	err := backend.Init()
 	if err != nil {
-		t.Skipf("Could not initialize S3 filesystem: %s", err)
+		t.Fatalf("Could not initialize S3 filesystem: %s", err)
 	}
 	return fmt.Sprintf("s3://%s", bucket), backend
 }
