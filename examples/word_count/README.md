@@ -7,3 +7,8 @@
 | test_wc_local  | 170ms              |
 | test_wc_s3     | 3.79sec            |
 | test_wc_lambda | 3.92sec            |
+| xxx            | 3.92sec            |
+| xxx        | 3.92sec            |
+| xxx | 3.92sec            |
+
+locally / lambda
