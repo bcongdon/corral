@@ -96,7 +96,7 @@ func TestLocalMapReduce(t *testing.T) {
 
 	driver.Main()
 
-	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "output-part-0"))
+	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "1mb_output"))
 	assert.Nil(t, err)
 
 	keyVals := testOutputToKeyValues(string(output))
@@ -137,7 +137,7 @@ func TestLocalMultiJob(t *testing.T) {
 
 	driver.Main()
 
-	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "job1", "output-part-0"))
+	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "job1", "1mb_output"))
 	assert.Nil(t, err)
 
 	keyVals := testOutputToKeyValues(string(output))
@@ -203,7 +203,7 @@ func TestLocalStructFieldMapReduce(t *testing.T) {
 
 	driver.Main()
 
-	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "output-part-0"))
+	output, err := ioutil.ReadFile(filepath.Join(tmpdir, "1mb_output"))
 	assert.Nil(t, err)
 
 	keyVals := testOutputToKeyValues(string(output))

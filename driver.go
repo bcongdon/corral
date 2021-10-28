@@ -128,18 +128,30 @@ func WithInputs(inputs ...string) Option {
 }
 
 func (d *Driver) runMapPhase(job *Job, jobNumber int, inputs []string) {
+	//split file, restul structure:
+	// [
+	// 	{Filename: "",
+	// 	StartOffset: %d,
+	// 	EndOffset:   %d},
+	// 	{...}, {...}
+	// ]
 	inputSplits := job.inputSplits(inputs, d.config.SplitSize)
 	if len(inputSplits) == 0 {
 		log.Warnf("No input splits")
 		return
 	}
-	log.Debugf("Number of job input splits: %d", len(inputSplits))
+	log.Debugf("Number of job input splits: %d", len(inputSplits)) //14
 
 	inputBins := packInputSplits(inputSplits, d.config.MapBinSize)
-	log.Debugf("Number of job input bins: %d", len(inputBins))
+	// for binID, bin := range inputBins {
+	// 	go func(bID uint, b []inputSplit) {
+	// 		fmt.Printf("binID: %d\n", bID)
+	// 	}(uint(binID), bin)
+	// }
+	log.Debugf("Number of job input bins: %d", len(inputBins)) //14
 	bar := pb.New(len(inputBins)).Prefix("Map").Start()
 
-	var wg sync.WaitGroup
+	var wg sync.WaitGroup //working concorrently
 	sem := semaphore.NewWeighted(int64(d.config.MaxConcurrency))
 	for binID, bin := range inputBins {
 		sem.Acquire(context.Background(), 1)
@@ -182,6 +194,7 @@ func (d *Driver) run() {
 		lambdaDriver = d
 		lambda.Start(handleRequest)
 	}
+	//deploy lambda functions
 	if lBackend, ok := d.executor.(*lambdaExecutor); ok {
 		lBackend.Deploy()
 	}
@@ -190,6 +203,8 @@ func (d *Driver) run() {
 		log.Error("No inputs!")
 		return
 	}
+
+	start := time.Now()
 
 	inputs := d.config.Inputs
 	for idx, job := range d.jobs {
@@ -214,6 +229,8 @@ func (d *Driver) run() {
 		log.Infof("Job %d - Total Bytes Read:\t%s", idx, humanize.Bytes(uint64(job.bytesRead)))
 		log.Infof("Job %d - Total Bytes Written:\t%s", idx, humanize.Bytes(uint64(job.bytesWritten)))
 	}
+	end := time.Now()
+	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
 }
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
@@ -234,8 +251,9 @@ func (d *Driver) Main() {
 		return
 	}
 
+	// configure input file
 	d.config.Inputs = append(d.config.Inputs, flag.Args()...)
-	if *lambdaFlag {
+	if *lambdaFlag { //create Lambda environment
 		d.executor = newLambdaExecutor(viper.GetString("lambdaFunctionName"))
 	}
 
@@ -243,10 +261,7 @@ func (d *Driver) Main() {
 		d.config.WorkingLocation = *outputDir
 	}
 
-	start := time.Now()
 	d.run()
-	end := time.Now()
-	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)

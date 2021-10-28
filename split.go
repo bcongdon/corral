@@ -2,6 +2,7 @@ package corral
 
 import (
 	"bufio"
+	"fmt"
 
 	"github.com/bcongdon/corral/internal/pkg/corfs"
 	humanize "github.com/dustin/go-humanize"
@@ -41,8 +42,10 @@ func splitInputFile(file corfs.FileInfo, maxSplitSize int64) []inputSplit {
 			EndOffset:   endOffset,
 		}
 		splits = append(splits, newSplit)
+		// fmt.Printf("new start: %d\n", newSplit.StartOffset)
+		// fmt.Printf("new end: %d\n", newSplit.EndOffset)
+		// fmt.Printf("new size: %d\n\n", newSplit.Size())
 	}
-
 	return splits
 }
 
@@ -81,7 +84,7 @@ func packInputSplits(splits []inputSplit, maxBinSize int64) [][]inputSplit {
 			bins = append(bins, newBin)
 		}
 	}
-
+	fmt.Printf("len(bins): %d\n", len(bins))
 	binnedSplits := make([][]inputSplit, len(bins))
 	totalSize := int64(0)
 	for i, bin := range bins {

@@ -147,20 +147,26 @@ func (l *lambdaExecutor) RunReducer(job *Job, jobNumber int, binID uint) error {
 func (l *lambdaExecutor) Deploy() {
 	var roleARN string
 	var err error
-	if viper.GetBool("lambdaManageRole") {
-		roleARN, err = l.DeployPermissions(corralRoleName)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		roleARN = viper.GetString("lambdaRoleARN")
-	}
+	//create a role for lambda to access s3
+	// if viper.GetBool("lambdaManageRole") {
+	// 	roleARN, err = l.DeployPermissions(corralRoleName)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// } else {
+	// 	roleARN = viper.GetString("lambdaRoleARN")
+	// }
+	roleARN = viper.GetString("lambdaRoleARN")
 
+	subNetIds := []string{"subnet-0750e07078ba1b749", "subnet-0c41b37d4513cff31"}
+	securityGroupIds := []string{"sg-039a1e79148c8e1bf"}
 	config := &corlambda.FunctionConfig{
-		Name:       l.functionName,
-		RoleARN:    roleARN,
-		Timeout:    viper.GetInt64("lambdaTimeout"),
-		MemorySize: viper.GetInt64("lambdaMemory"),
+		Name:             l.functionName,
+		RoleARN:          roleARN,
+		Timeout:          viper.GetInt64("lambdaTimeout"),
+		MemorySize:       viper.GetInt64("lambdaMemory"),
+		SubNetIds:        subNetIds,
+		SecurityGroupIds: securityGroupIds,
 	}
 	err = l.DeployFunction(config)
 	if err != nil {

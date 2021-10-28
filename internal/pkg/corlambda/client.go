@@ -36,10 +36,12 @@ type LambdaClient struct {
 
 // FunctionConfig holds the configuration of an individual Lambda function
 type FunctionConfig struct {
-	Name       string
-	RoleARN    string
-	Timeout    int64
-	MemorySize int64
+	Name             string
+	RoleARN          string
+	Timeout          int64
+	MemorySize       int64
+	SubNetIds        []string
+	SecurityGroupIds []string
 }
 
 // NewLambdaClient initializes a new LambdaClient
@@ -65,11 +67,16 @@ func functionConfigNeedsUpdate(function *FunctionConfig, cfg *lambda.FunctionCon
 
 // updateFunctionSettings updates the provided lambda function settings (i.e. for memory and timeout)
 func (l *LambdaClient) updateFunctionSettings(function *FunctionConfig) error {
+	var vpcConfig *lambda.VpcConfig
+
+	vpcConfig.SubnetIds = aws.StringSlice(function.SubNetIds)
+	vpcConfig.SecurityGroupIds = aws.StringSlice(function.SecurityGroupIds)
 	params := &lambda.UpdateFunctionConfigurationInput{
 		FunctionName: aws.String(function.Name),
 		Role:         aws.String(function.RoleARN),
 		Timeout:      aws.Int64(function.Timeout),
 		MemorySize:   aws.Int64(function.MemorySize),
+		VpcConfig:    vpcConfig,
 	}
 	_, err := l.Client.UpdateFunctionConfiguration(params)
 	return err

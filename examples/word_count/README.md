@@ -12,3 +12,4 @@
 | xxx | 3.92sec            |
 
 locally / lambda
+function sending time?
