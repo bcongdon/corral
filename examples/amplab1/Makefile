@@ -37,7 +37,7 @@ test_al1_lambda_1node: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://$(AMPLAB_PATH)/1node/rankings/part-*
 
 test_al1_lambda_5node: $(PROG_NAME)
-	.$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
+	$(BIN_DIR)/$(PROG_NAME) --lambda --out s3://${BUCKET} s3://$(AMPLAB_PATH)/5nodes/rankings/part-*
 
 clean:
 	find . -name "*.out" -print0 | xargs -0 rm
