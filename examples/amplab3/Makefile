@@ -1,3 +1,4 @@
+AWS_TEST_BUCKET = lyuze/corral/amplab3/
 BUCKET = ${AWS_TEST_BUCKET}
 
 BIN_DIR = ./bin

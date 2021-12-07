@@ -192,6 +192,7 @@ func (d *Driver) run() {
 	}
 
 	inputs := d.config.Inputs
+	start := time.Now()
 	for idx, job := range d.jobs {
 		// Initialize job filesystem
 		job.fileSystem = corfs.InferFilesystem(inputs[0])
@@ -214,6 +215,22 @@ func (d *Driver) run() {
 		log.Infof("Job %d - Total Bytes Read:\t%s", idx, humanize.Bytes(uint64(job.bytesRead)))
 		log.Infof("Job %d - Total Bytes Written:\t%s", idx, humanize.Bytes(uint64(job.bytesWritten)))
 	}
+	end := time.Now()
+	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
+	PrintMemUsage()
+}
+
+func PrintMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	// fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	fmt.Printf("Memory Usage = %v MiB\n", bToMb(m.Sys))
+	// fmt.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }
 
 var lambdaFlag = flag.Bool("lambda", false, "Use lambda backend")
@@ -243,10 +260,7 @@ func (d *Driver) Main() {
 		d.config.WorkingLocation = *outputDir
 	}
 
-	start := time.Now()
 	d.run()
-	end := time.Now()
-	fmt.Printf("Job Execution Time: %s\n", end.Sub(start))
 
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)

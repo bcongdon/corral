@@ -1,3 +1,4 @@
+AWS_TEST_BUCKET = lyuze/corral/wordCount/
 BUCKET = ${AWS_TEST_BUCKET}
 BIN_DIR = ./bin
 PROG_NAME = word_count
