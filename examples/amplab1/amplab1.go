@@ -21,6 +21,8 @@ func (a amplab1) Map(key, value string, emitter corral.Emitter) {
 
 	pageURL := fields[0]
 	pageRank, err := strconv.Atoi(fields[1])
+	// fmt.Printf("pageURL: %s\n", pageURL)
+	// fmt.Printf("pageRank: %d\n", pageRank)
 	if err == nil && pageRank > pageRankCutoff {
 		emitter.Emit(pageURL, fields[1])
 	}
