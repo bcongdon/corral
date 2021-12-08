@@ -19,10 +19,10 @@ test_al1_local_tiny: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) data/*
 
 test_al1_local_1node: $(PROG_NAME)
-	$(BIN_DIR)/$(PROG_NAME) /Volumes/Yuze_SSD/amplab_data/amplab1/1node_data/*
+	$(BIN_DIR)/$(PROG_NAME) /mnt/pmem-test/amplab1/1node_data/*
 
 test_al1_local_5node: $(PROG_NAME)
-	$(BIN_DIR)/$(PROG_NAME) /Volumes/Yuze_SSD/amplab_data/amplab1/5node_data/*
+	$(BIN_DIR)/$(PROG_NAME) /mnt/pmem-test/amplab1/5node_data/*
 
 tiny_data:
 	aws s3 cp --recursive ./data/ s3://${BUCKET}

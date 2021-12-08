@@ -103,7 +103,8 @@ func (j *Job) runMapperSplit(split inputSplit, emitter Emitter) error {
 // Logic for running a single reduce task
 func (j *Job) runReducer(binID uint) error {
 	// Determine the intermediate data files this reducer is responsible for
-	path := j.fileSystem.Join(j.outputPath, fmt.Sprintf("map-bin%d-*", binID))
+	intDir := "/mnt/pmem-test/amplab1/intm/"
+	path := j.fileSystem.Join(intDir, fmt.Sprintf("map-bin%d-*", binID))
 	files, err := j.fileSystem.ListFiles(path)
 	if err != nil {
 		return err
@@ -144,12 +145,12 @@ func (j *Job) runReducer(binID uint) error {
 		reader.Close()
 
 		// Delete intermediate map data
-		if j.config.Cleanup {
-			err := j.fileSystem.Delete(file.Name)
-			if err != nil {
-				log.Error(err)
-			}
-		}
+		// if j.config.Cleanup {
+		// 	err := j.fileSystem.Delete(file.Name)
+		// 	if err != nil {
+		// 		log.Error(err)
+		// 	}
+		// }
 	}
 
 	var waitGroup sync.WaitGroup

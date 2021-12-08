@@ -94,7 +94,8 @@ func (me *mapperEmitter) Emit(key, value string) error {
 	writer, exists := me.writers[bin]
 	if !exists {
 		var err error
-		path := me.fs.Join(me.outDir, fmt.Sprintf("map-bin%d-%d.out", bin, me.mapperID))
+		intDir := "/mnt/pmem-test/amplab1/intm/"
+		path := me.fs.Join(intDir, fmt.Sprintf("map-bin%d-%d.out", bin, me.mapperID))
 
 		writer, err = me.fs.OpenWriter(path)
 		if err != nil {

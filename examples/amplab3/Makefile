@@ -20,6 +20,12 @@ $(PROG_NAME):
 test_al3_local_tiny: $(PROG_NAME)
 	$(BIN_DIR)/$(PROG_NAME) data/*
 
+test_al3_local_1node: $(PROG_NAME)
+	$(BIN_DIR)/$(PROG_NAME) /mnt/pmem-test/amplab3/1node_data/*
+
+test_al3_local_5node: $(PROG_NAME)
+	$(BIN_DIR)/$(PROG_NAME) /mnt/pmem-test/amplab3/5node_data/*
+
 tiny_data:
 	aws s3 cp --recursive ./data/ s3://${BUCKET}
 
