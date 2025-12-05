@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/mattetti/filebuffer v1.0.1
 	github.com/mattn/go-runewidth v0.0.12 // indirect
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.8.3
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
